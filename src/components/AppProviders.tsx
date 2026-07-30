@@ -13,9 +13,9 @@ export default function AppProviders({ children }: PropsWithChildren) {
       <AptosWalletAdapterProvider
         autoConnect
         dappConfig={{
-          network: Network.TESTNET,
+          network: Network.SHELBYNET,
           aptosApiKeys: {
-            testnet: process.env.NEXT_PUBLIC_SHELBY_API_KEY,
+            shelbynet: process.env.NEXT_PUBLIC_SHELBY_API_KEY,
           },
         }}
       >
