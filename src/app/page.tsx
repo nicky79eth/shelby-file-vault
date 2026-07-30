@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import FileList from "@/components/FileList";
 import UploadBox from "@/components/UploadBox";
+import WalletButton from "@/components/WalletButton";
 import type { StoredFile } from "@/types/file";
 
 const STORAGE_KEY = "shelby-file-vault:v1";
@@ -49,6 +50,7 @@ export default function Home() {
         <div className="nav-right">
           <a href="https://docs.shelby.xyz" target="_blank" rel="noreferrer">Docs ↗</a>
           <span className="network-chip"><span /> Testnet</span>
+          <WalletButton />
         </div>
       </nav>
 

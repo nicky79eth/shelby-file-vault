@@ -50,6 +50,29 @@ button, a { -webkit-tap-highlight-color: transparent; }
   color: var(--muted); font-size: 12px; font-weight: 700;
 }
 .network-chip span, .pulse { width: 7px; height: 7px; background: #69c800; border-radius: 50%; box-shadow: 0 0 0 4px rgba(105,200,0,.12); }
+.wallet-menu { position: relative; }
+.wallet-button {
+  min-height: 38px; border: 0; border-radius: 11px; padding: 0 14px; background: var(--purple);
+  color: white; font-size: 12px; font-weight: 750; cursor: pointer; display: flex; align-items: center; gap: 8px;
+}
+.wallet-button.connected { background: var(--ink); }
+.wallet-button small { color: #bdb9ae; font-size: 9px; padding-left: 4px; }
+.wallet-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acid); }
+.wallet-popover {
+  position: absolute; z-index: 20; width: 270px; right: 0; top: calc(100% + 10px); background: var(--card);
+  border: 1px solid var(--line); border-radius: 16px; padding: 12px; box-shadow: 0 20px 50px rgba(23,24,19,.18);
+}
+.wallet-popover > strong { display: block; padding: 8px 9px 12px; font-size: 12px; }
+.wallet-popover > button {
+  width: 100%; border: 0; background: transparent; border-radius: 10px; padding: 10px;
+  display: flex; align-items: center; gap: 9px; cursor: pointer; text-align: left;
+}
+.wallet-popover > button:hover { background: #efede5; }
+.wallet-popover img { width: 25px; height: 25px; border-radius: 7px; }
+.wallet-popover button span { flex: 1; font-weight: 700; font-size: 12px; }
+.wallet-popover button small { color: var(--muted); font-size: 9px; }
+.wallet-popover p { color: var(--muted); font-size: 11px; line-height: 1.5; padding: 0 9px; }
+.wallet-popover .wallet-error { color: #a62c2c; }
 
 .hero { min-height: 470px; display: grid; grid-template-columns: 1.15fr .85fr; align-items: center; gap: 40px; }
 .hero-copy { padding-block: 70px; position: relative; z-index: 2; }
@@ -110,6 +133,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .primary-button:disabled { opacity: .35; cursor: not-allowed; }
 .privacy-note { text-align: center; margin: 12px 8px 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .error-message { color: #a62c2c; background: #ffebeb; border-radius: 10px; padding: 10px 12px; font-size: 12px; margin: 12px 0 0; }
+.success-message { color: #447400; background: #efffcf; border-radius: 10px; padding: 10px 12px; font-size: 12px; margin: 12px 0 0; }
 .spinner { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.35); border-top-color: white; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -149,6 +173,8 @@ footer { border-top: 1px solid var(--line); min-height: 75px; display: flex; jus
 @media (max-width: 620px) {
   .nav-shell, .page-shell, footer { width: min(100% - 24px, 1180px); }
   .nav-right a { display: none; }
+  .nav-right { gap: 8px; }
+  .network-chip { display: none; }
   .hero h1 { font-size: 52px; }
   .hero p { font-size: 16px; }
   .stats-strip { grid-template-columns: 1fr; gap: 16px; padding: 22px; }

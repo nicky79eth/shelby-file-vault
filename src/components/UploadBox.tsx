@@ -1,24 +1,67 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useUploadBlobs } from "@shelby-protocol/react";
 import { formatBytes } from "@/lib/format";
-import type { StoredFile, UploadResponse } from "@/types/file";
+import { shelbyBrowserClient } from "@/lib/shelby-browser";
+import type { StoredFile } from "@/types/file";
 
 type Props = {
   onUploaded: (file: StoredFile) => void;
 };
 
 export default function UploadBox({ onUploaded }: Props) {
+  const { account, connected, signAndSubmitTransaction } = useWallet();
   const inputRef = useRef<HTMLInputElement>(null);
+  const pendingBlobName = useRef("");
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const uploadBlobs = useUploadBlobs({
+    client: shelbyBrowserClient,
+    onSuccess: () => {
+      if (!file || !account) return;
+
+      const address = account.address.toString();
+      const blobName = pendingBlobName.current;
+      const encodedName = blobName.split("/").map(encodeURIComponent).join("/");
+
+      onUploaded({
+        id: crypto.randomUUID(),
+        name: file.name,
+        size: file.size,
+        type: file.type || "application/octet-stream",
+        uploadedAt: new Date().toISOString(),
+        blobName,
+        ownerAddress: address,
+        url: `https://api.shelbynet.shelby.xyz/shelby/v1/blobs/${address}/${encodedName}`,
+        provider: "shelby",
+      });
+      setSuccess("Uploaded to Shelby. Your wallet signed the transaction.");
+      setFile(null);
+      if (inputRef.current) inputRef.current.value = "";
+    },
+    onError: (reason) => {
+      setError(reason.message || "Shelby upload failed.");
+    },
+  });
+
+  function safeName(name: string) {
+    return name
+      .normalize("NFKD")
+      .replace(/[^\w.\-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 120) || "file";
+  }
 
   function choose(nextFile?: File) {
     if (!nextFile) return;
     setFile(nextFile);
     setError("");
+    setSuccess("");
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -32,32 +75,37 @@ export default function UploadBox({ onUploaded }: Props) {
   }
 
   async function upload() {
-    if (!file || uploading) return;
+    if (!file || uploadBlobs.isPending) return;
 
-    setUploading(true);
     setError("");
+    setSuccess("");
 
     try {
-      const body = new FormData();
-      body.append("file", file);
-      const response = await fetch("/api/upload", { method: "POST", body });
-      const data = (await response.json()) as UploadResponse | { error?: string };
-
-      if (!response.ok || !("success" in data)) {
-        throw new Error("error" in data ? data.error : "Upload failed.");
+      if (!connected || !account || !signAndSubmitTransaction) {
+        throw new Error("Connect your Petra wallet before uploading.");
       }
 
-      onUploaded({
-        ...data.file,
-        id: crypto.randomUUID(),
-        uploadedAt: new Date().toISOString(),
+      const maxBytes = 10 * 1024 * 1024;
+      if (file.size > maxBytes) {
+        throw new Error("File must be smaller than 10 MB.");
+      }
+
+      const blobName = `vault/${Date.now()}-${safeName(file.name)}`;
+      pendingBlobName.current = blobName;
+      const blobData = new Uint8Array(await file.arrayBuffer());
+      const expirationMicros =
+        (Date.now() + 30 * 24 * 60 * 60 * 1000) * 1000;
+
+      uploadBlobs.mutate({
+        signer: {
+          account: account.accountAddress,
+          signAndSubmitTransaction,
+        },
+        blobs: [{ blobName, blobData }],
+        expirationMicros,
       });
-      setFile(null);
-      if (inputRef.current) inputRef.current.value = "";
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Upload failed.");
-    } finally {
-      setUploading(false);
     }
   }
 
@@ -70,7 +118,7 @@ export default function UploadBox({ onUploaded }: Props) {
         </div>
         <span className="secure-pill">
           <span className="pulse" />
-          Testnet ready
+          {connected ? "Wallet connected" : "Wallet required"}
         </span>
       </div>
 
@@ -112,17 +160,18 @@ export default function UploadBox({ onUploaded }: Props) {
       ) : null}
 
       {error ? <p className="error-message">{error}</p> : null}
+      {success ? <p className="success-message">{success}</p> : null}
 
-      <button className="primary-button" onClick={upload} disabled={!file || uploading}>
-        {uploading ? (
+      <button className="primary-button" onClick={upload} disabled={!file || uploadBlobs.isPending}>
+        {uploadBlobs.isPending ? (
           <>
             <span className="spinner" /> Uploading…
           </>
         ) : (
-          <>Upload to Shelby <span>↗</span></>
+          <>{connected ? "Sign & upload to Shelby" : "Connect wallet to upload"} <span>↗</span></>
         )}
       </button>
-      <p className="privacy-note">Demo mode saves metadata locally. Enable Shelby mode for decentralized storage.</p>
+      <p className="privacy-note">Petra signs the transaction. Your private key never enters this app.</p>
     </section>
   );
 }
