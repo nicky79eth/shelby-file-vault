@@ -98,7 +98,7 @@ export default function UploadBox({ onUploaded }: Props) {
 
       uploadBlobs.mutate({
         signer: {
-          account: account.accountAddress,
+          account: account.address,
           signAndSubmitTransaction,
         },
         blobs: [{ blobName, blobData }],

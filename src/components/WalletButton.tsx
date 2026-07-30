@@ -44,7 +44,9 @@ export default function WalletButton() {
           {wallets.length ? (
             wallets.map((wallet) => (
               <button key={wallet.name} onClick={() => void connectWallet(wallet.name)}>
-                {wallet.icon ? <img src={wallet.icon} alt="" /> : null}
+                <span className="wallet-avatar" aria-hidden="true">
+                  {wallet.name.slice(0, 1).toUpperCase()}
+                </span>
                 <span>{wallet.name}</span>
                 <small>{wallet.readyState}</small>
               </button>
