@@ -33,6 +33,26 @@ function getViewUrl(file: StoredFile): string | undefined {
 
 export default function FileList({ files, onRemove }: Props) {
   const [copied, setCopied] = useState("");
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredFiles = files.filter((file) => {
+    const matchesQuery =
+      !normalizedQuery ||
+      file.name.toLowerCase().includes(normalizedQuery) ||
+      file.blobName.toLowerCase().includes(normalizedQuery) ||
+      file.ownerAddress?.toLowerCase().includes(normalizedQuery);
+    const matchesType =
+      typeFilter === "all" ||
+      (typeFilter === "image" && file.type.startsWith("image/")) ||
+      (typeFilter === "video" && file.type.startsWith("video/")) ||
+      (typeFilter === "document" &&
+        !file.type.startsWith("image/") &&
+        !file.type.startsWith("video/"));
+
+    return matchesQuery && matchesType;
+  });
 
   async function copy(value: string, id: string) {
     await navigator.clipboard.writeText(value);
@@ -50,15 +70,49 @@ export default function FileList({ files, onRemove }: Props) {
         <span className="file-count">{files.length} {files.length === 1 ? "file" : "files"}</span>
       </div>
 
+      {files.length > 0 ? (
+        <div className="file-search">
+          <span className="search-icon" aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search file, address or blob..."
+            aria-label="Search files"
+          />
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+            aria-label="Filter file type"
+          >
+            <option value="all">All types</option>
+            <option value="image">Images</option>
+            <option value="document">Documents</option>
+            <option value="video">Videos</option>
+          </select>
+          {query ? (
+            <button className="clear-search" onClick={() => setQuery("")} aria-label="Clear search">
+              ×
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {files.length === 0 ? (
         <div className="empty-state">
           <div className="empty-orbit">◇</div>
           <strong>Your vault is waiting.</strong>
           <p>Uploaded files will appear here with their Shelby blob name and retrieval link.</p>
         </div>
+      ) : filteredFiles.length === 0 ? (
+        <div className="no-results">
+          <strong>No matching files.</strong>
+          <p>Try another file name, wallet address, blob name, or file type.</p>
+          <button onClick={() => { setQuery(""); setTypeFilter("all"); }}>Clear filters</button>
+        </div>
       ) : (
         <div className="file-list">
-          {files.map((file) => (
+          {filteredFiles.map((file) => (
             <article className="file-row" key={file.id}>
               <FileIcon type={file.type} />
               <div className="file-info">

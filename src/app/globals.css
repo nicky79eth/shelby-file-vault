@@ -143,6 +143,25 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .files-panel { min-height: 445px; }
 .file-count { color: var(--ink); }
+.file-search {
+  display: flex; align-items: center; gap: 8px; margin: -8px 0 18px; padding: 7px 8px 7px 13px;
+  border: 1px solid var(--line); border-radius: 14px; background: #f8f6ef;
+}
+.search-icon { color: var(--muted); font-size: 22px; line-height: 1; transform: rotate(-15deg); }
+.file-search input {
+  min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--ink);
+  font-size: 12px;
+}
+.file-search input::placeholder { color: #949185; }
+.file-search select {
+  border: 1px solid var(--line); outline: 0; border-radius: 9px; padding: 8px 28px 8px 10px;
+  background: var(--card); color: var(--ink); font-size: 10px; font-weight: 700; cursor: pointer;
+}
+.clear-search { width: 28px; height: 28px; border: 0; border-radius: 8px; background: #e9e6dc; cursor: pointer; color: var(--muted); }
+.no-results { min-height: 240px; display: grid; place-items: center; align-content: center; text-align: center; }
+.no-results strong { font-size: 16px; }
+.no-results p { margin: 7px 0 14px; color: var(--muted); font-size: 12px; }
+.no-results button { border: 0; border-radius: 10px; padding: 9px 13px; background: var(--ink); color: white; font-size: 10px; font-weight: 700; cursor: pointer; }
 .empty-state { min-height: 290px; display: grid; place-items: center; align-content: center; text-align: center; color: var(--muted); }
 .empty-orbit { font-size: 48px; color: var(--purple); margin-bottom: 12px; }
 .empty-state strong { color: var(--ink); font-size: 17px; }
@@ -187,5 +206,8 @@ footer { border-top: 1px solid var(--line); min-height: 75px; display: flex; jus
   .panel { padding: 20px; border-radius: 20px; }
   .file-row { align-items: flex-start; flex-wrap: wrap; }
   .file-actions { width: 100%; padding-left: 56px; }
+  .file-search { flex-wrap: wrap; }
+  .file-search input { min-width: calc(100% - 42px); }
+  .file-search select { flex: 1; }
   footer { flex-direction: column; justify-content: center; gap: 5px; }
 }
