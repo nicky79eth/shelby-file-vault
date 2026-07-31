@@ -64,7 +64,13 @@ export default function WalletButton() {
                 onClick={() => void connectWallet(wallet.name)}
               >
                 <span className="wallet-avatar" aria-hidden="true">
-                  {wallet.name.slice(0, 1).toUpperCase()}
+                  {wallet.icon ? (
+                    // Wallet icons may be data URLs or extension-provided URLs.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={wallet.icon} alt="" />
+                  ) : (
+                    <span>{wallet.name.slice(0, 1).toUpperCase()}</span>
+                  )}
                 </span>
                 <span>{wallet.name}</span>
                 <small>{wallet.readyState}</small>
