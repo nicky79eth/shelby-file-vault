@@ -89,8 +89,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .hero p { max-width: 590px; color: var(--muted); font-size: 18px; line-height: 1.65; margin: 0; }
 .hero-visual { height: 410px; position: relative; display: grid; place-items: center; }
 .vault-core {
-  width: 205px; height: 238px; border-radius: 40% 40% 48% 48% / 32% 32% 58% 58%;
-  background: linear-gradient(145deg, #25271e, #0e0f0b); box-shadow: 0 35px 80px rgba(23,24,19,.28), inset 0 1px rgba(255,255,255,.16);
+  width: 205px; height: 238px;
+  background: linear-gradient(145deg, #25271e, #0e0f0b);
+  clip-path: polygon(50% 0, 91% 13%, 85% 68%, 50% 100%, 15% 68%, 9% 13%);
+  filter: drop-shadow(0 30px 35px rgba(23,24,19,.28));
   color: var(--acid); display: grid; place-items: center; align-content: center; gap: 12px; transform: rotate(5deg);
   position: relative; z-index: 2;
 }
