@@ -106,8 +106,8 @@ export default function UploadBox({ onUploaded }: Props) {
         throw new Error("Connect your Petra wallet before uploading.");
       }
 
-      if (file.size > 10 * 1024 * 1024) {
-        throw new Error("File must be smaller than 10 MB.");
+      if (file.size > 50 * 1024 * 1024) {
+        throw new Error("File must be 50 MB or smaller.");
       }
 
       setStage("preparing");
@@ -173,7 +173,7 @@ export default function UploadBox({ onUploaded }: Props) {
         <input ref={inputRef} type="file" onChange={handleChange} hidden />
         <div className="upload-icon" aria-hidden="true">↑</div>
         <strong>Drop your file here</strong>
-        <p>or click to browse · max 10 MB</p>
+        <p>or click to browse · max 50 MB</p>
       </div>
 
       {file ? (
