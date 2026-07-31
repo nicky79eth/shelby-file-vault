@@ -69,7 +69,7 @@ export default function Home() {
             <div className="orb orb-two" />
             <div className="vault-core">
               <span>◇</span>
-              <small>SHELBY</small>
+              <small>VAULT</small>
             </div>
           </div>
         </header>
