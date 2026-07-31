@@ -40,7 +40,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .brand b { font-weight: 800; }
 .brand-glyph {
   display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px;
-  background: var(--ink); color: var(--acid); font-weight: 900; transform: rotate(-4deg);
+  background: var(--ink); transform: rotate(-4deg);
+}
+.brand-glyph::before {
+  content: ""; width: 11px; height: 11px; border: 2px solid var(--acid);
+  transform: rotate(45deg);
 }
 .nav-right { display: flex; align-items: center; gap: 24px; font-size: 14px; }
 .nav-right a { color: var(--ink); text-decoration: none; font-weight: 600; }
