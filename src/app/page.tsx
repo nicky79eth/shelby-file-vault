@@ -45,11 +45,7 @@ export default function Home() {
       <nav className="nav-shell">
         <a className="brand" href="#" aria-label="Shelby File Vault home">
           <span className="brand-glyph" aria-hidden="true" />
-          <span className="brand-wave" aria-hidden="true">
-            <span>Shelby</span>
-            <span>File</span>
-            <span>Vault</span>
-          </span>
+          <span>Shelby File <b>Vault</b></span>
         </a>
         <div className="nav-right">
           <a href="https://docs.shelby.xyz" target="_blank" rel="noreferrer">Docs ↗</a>
