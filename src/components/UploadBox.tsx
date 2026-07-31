@@ -7,6 +7,8 @@ import { formatBytes } from "@/lib/format";
 import { shelbyBrowserClient } from "@/lib/shelby-browser";
 import type { StoredFile } from "@/types/file";
 
+type UploadStage = "idle" | "preparing" | "signing" | "confirming" | "complete";
+
 type Props = {
   onUploaded: (file: StoredFile) => void;
 };
@@ -18,7 +20,10 @@ export default function UploadBox({ onUploaded }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
+  const [technicalError, setTechnicalError] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
   const [success, setSuccess] = useState("");
+  const [stage, setStage] = useState<UploadStage>("idle");
 
   const uploadBlobs = useUploadBlobs({
     client: shelbyBrowserClient,
@@ -37,33 +42,48 @@ export default function UploadBox({ onUploaded }: Props) {
         size: file.size,
         type: file.type || "application/octet-stream",
         uploadedAt: new Date().toISOString(),
+        expiresAt: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         blobName,
         ownerAddress: address,
         url: explorerUrl,
         provider: "shelby",
       });
-      setSuccess("Uploaded to Shelby. Your wallet signed the transaction.");
+      setSuccess("Uploaded to Shelby. Your file is ready in the explorer.");
+      setStage("complete");
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
     },
     onError: (reason) => {
-      setError(reason.message || "Shelby upload failed.");
+      setError(friendlyUploadError(reason));
+      setTechnicalError(reason.message);
+      setStage("idle");
     },
   });
 
   function safeName(name: string) {
-    return name
-      .normalize("NFKD")
-      .replace(/[^\w.\-]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 120) || "file";
+    return (
+      name
+        .normalize("NFKD")
+        .replace(/[^\w.\-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 120) || "file"
+    );
+  }
+
+  function resetMessages() {
+    setError("");
+    setTechnicalError("");
+    setShowDetails(false);
+    setSuccess("");
+    setStage("idle");
   }
 
   function choose(nextFile?: File) {
     if (!nextFile) return;
     setFile(nextFile);
-    setError("");
-    setSuccess("");
+    resetMessages();
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -79,35 +99,43 @@ export default function UploadBox({ onUploaded }: Props) {
   async function upload() {
     if (!file || uploadBlobs.isPending) return;
 
-    setError("");
-    setSuccess("");
+    resetMessages();
 
     try {
       if (!connected || !account || !signAndSubmitTransaction) {
         throw new Error("Connect your Petra wallet before uploading.");
       }
 
-      const maxBytes = 10 * 1024 * 1024;
-      if (file.size > maxBytes) {
+      if (file.size > 10 * 1024 * 1024) {
         throw new Error("File must be smaller than 10 MB.");
       }
 
+      setStage("preparing");
       const blobName = `vault/${Date.now()}-${safeName(file.name)}`;
       pendingBlobName.current = blobName;
       const blobData = new Uint8Array(await file.arrayBuffer());
       const expirationMicros =
         (Date.now() + 30 * 24 * 60 * 60 * 1000) * 1000;
 
+      setStage("signing");
       uploadBlobs.mutate({
         signer: {
           account: account.address,
-          signAndSubmitTransaction,
+          signAndSubmitTransaction: async (transaction) => {
+            const response = await signAndSubmitTransaction(transaction);
+            setStage("confirming");
+            return response;
+          },
         },
         blobs: [{ blobName, blobData }],
         expirationMicros,
       });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Upload failed.");
+      const uploadError =
+        reason instanceof Error ? reason : new Error("Upload failed.");
+      setError(friendlyUploadError(uploadError));
+      setTechnicalError(uploadError.message);
+      setStage("idle");
     }
   }
 
@@ -137,43 +165,133 @@ export default function UploadBox({ onUploaded }: Props) {
         role="button"
         tabIndex={0}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") inputRef.current?.click();
+          if (event.key === "Enter" || event.key === " ") {
+            inputRef.current?.click();
+          }
         }}
       >
         <input ref={inputRef} type="file" onChange={handleChange} hidden />
-        <div className="upload-icon" aria-hidden="true">
-          ↑
-        </div>
+        <div className="upload-icon" aria-hidden="true">↑</div>
         <strong>Drop your file here</strong>
         <p>or click to browse · max 10 MB</p>
       </div>
 
       {file ? (
         <div className="selected-file">
-          <div className="file-mark">{file.name.split(".").pop()?.slice(0, 4) || "FILE"}</div>
+          <div className="file-mark">
+            {file.name.split(".").pop()?.slice(0, 4) || "FILE"}
+          </div>
           <div className="selected-details">
             <strong>{file.name}</strong>
             <span>{formatBytes(file.size)} · Ready to upload</span>
           </div>
-          <button className="icon-button" onClick={() => setFile(null)} aria-label="Remove file">
+          <button
+            className="icon-button"
+            onClick={() => setFile(null)}
+            aria-label="Remove file"
+          >
             ×
           </button>
         </div>
       ) : null}
 
-      {error ? <p className="error-message">{error}</p> : null}
+      {uploadBlobs.isPending || stage === "preparing" ? (
+        <ol className="upload-progress" aria-label="Upload progress">
+          <ProgressStep label="Prepare file" state={progressState(stage, "preparing")} />
+          <ProgressStep label="Sign in wallet" state={progressState(stage, "signing")} />
+          <ProgressStep label="Confirm & store" state={progressState(stage, "confirming")} />
+        </ol>
+      ) : null}
+
+      {error ? (
+        <div className="error-message">
+          <strong>Upload failed</strong>
+          <p>{error}</p>
+          {technicalError ? (
+            <>
+              <button onClick={() => setShowDetails((value) => !value)}>
+                {showDetails ? "Hide technical details" : "Show technical details"}
+              </button>
+              {showDetails ? <code>{technicalError}</code> : null}
+            </>
+          ) : null}
+        </div>
+      ) : null}
       {success ? <p className="success-message">{success}</p> : null}
 
-      <button className="primary-button" onClick={upload} disabled={!file || uploadBlobs.isPending}>
+      <button
+        className="primary-button"
+        onClick={upload}
+        disabled={!file || uploadBlobs.isPending}
+      >
         {uploadBlobs.isPending ? (
           <>
-            <span className="spinner" /> Uploading…
+            <span className="spinner" /> Working with Shelby…
           </>
         ) : (
-          <>{connected ? "Sign & upload to Shelby" : "Connect wallet to upload"} <span>↗</span></>
+          <>
+            {connected ? "Sign & upload to Shelby" : "Connect wallet to upload"}
+            <span>↗</span>
+          </>
         )}
       </button>
-      <p className="privacy-note">Petra signs the transaction. Your private key never enters this app.</p>
+      <p className="privacy-note">
+        Petra signs the transaction. Your private key never enters this app.
+      </p>
     </section>
+  );
+}
+
+function friendlyUploadError(error: Error): string {
+  const message = error.message.toLowerCase();
+
+  if (message.includes("reject") || message.includes("cancel")) {
+    return "The wallet request was cancelled. Try again when you are ready to sign.";
+  }
+  if (message.includes("insufficient") || message.includes("balance")) {
+    return "Your wallet may not have enough testnet funds for gas or storage.";
+  }
+  if (
+    message.includes("unauthorized") ||
+    message.includes("api key") ||
+    message.includes("401")
+  ) {
+    return "Shelby could not authorize this app. Check the Client API key and allowed website URL.";
+  }
+  if (message.includes("network") || message.includes("fetch")) {
+    return "The Shelby network could not be reached. Check your connection and try again.";
+  }
+  if (message.includes("10 mb") || message.includes("connect your")) {
+    return error.message;
+  }
+
+  return "Check your wallet, testnet balance, and Shelby configuration, then try again.";
+}
+
+function progressState(
+  current: UploadStage,
+  step: Exclude<UploadStage, "idle" | "complete">,
+): "done" | "active" | "pending" {
+  const order: UploadStage[] = ["preparing", "signing", "confirming", "complete"];
+  const currentIndex = order.indexOf(current);
+  const stepIndex = order.indexOf(step);
+
+  if (currentIndex > stepIndex) return "done";
+  if (current === step) return "active";
+  return "pending";
+}
+
+function ProgressStep({
+  label,
+  state,
+}: {
+  label: string;
+  state: "done" | "active" | "pending";
+}) {
+  return (
+    <li className={state}>
+      <span>{state === "done" ? "✓" : state === "active" ? "•" : ""}</span>
+      {label}
+    </li>
   );
 }

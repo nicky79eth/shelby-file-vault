@@ -1,6 +1,6 @@
 # Shelby File Vault
 
-A polished, open-source file storage dApp for the Shelby Protocol. Users connect an Aptos wallet, sign their own upload transaction, keep metadata in their browser, copy the Shelby blob name, and open the retrieval URL.
+A polished, open-source file storage dApp for the Shelby Protocol. Users connect an Aptos wallet, sign their own upload transaction, discover blobs owned by their wallet, copy blob names, and open files in Shelby Explorer.
 
 **Shelby application category:** `Infra / Tooling`
 
@@ -9,7 +9,7 @@ A polished, open-source file storage dApp for the Shelby Protocol. Users connect
 - Next.js App Router, TypeScript, Tailwind CSS
 - Drag-and-drop or file-picker upload
 - File validation and a configurable size limit
-- Browser `localStorage` metadata
+- Wallet-based Shelby blob discovery combined with browser metadata
 - File list with copy, view, and remove actions
 - Aptos wallet adapter with Petra and compatible wallets
 - User-signed Shelby uploads through `@shelby-protocol/react`
@@ -63,7 +63,9 @@ Request the transaction signature from Petra
         ↓
 Upload with Shelby React SDK
         ↓
-Save non-sensitive metadata in localStorage
+Save richer non-sensitive metadata in localStorage
+        ↓
+Sync the connected wallet's blob metadata from Shelby
 ```
 
 Local removal only removes the dashboard entry; it does not delete an uploaded Shelby blob.
@@ -109,7 +111,6 @@ Add the deployed Vercel domain to the Client key's allowed Web App URLs, then re
 
 ## Roadmap
 
-- Query on-chain blob metadata by connected wallet
 - Encrypted client-side uploads
 - Multi-file upload with progress
 - Permission-controlled sharing
@@ -127,11 +128,11 @@ Infra / Tooling
 
 **Project description**
 
-Shelby File Vault is a decentralized file management dApp that lets users upload, track, and retrieve digital assets through a clean web dashboard. The MVP provides file validation, locally persisted metadata, Shelby blob identifiers, and direct retrieval links, with a clear upgrade path to wallet-owned encrypted storage and permission-controlled sharing.
+Shelby File Vault is a decentralized file management dApp that lets users upload, discover, track, and retrieve digital assets through a clean web dashboard. The MVP provides wallet-signed uploads, connected-wallet blob discovery, locally enriched metadata, Shelby blob identifiers, search and direct Explorer links.
 
 **How do you use Shelby?**
 
-Shelby is the application's core storage layer. File bytes are uploaded through the Shelby TypeScript SDK, while the resulting owner address, blob name, and retrieval URL are returned to the dashboard. Browser storage holds only the user's local index of non-sensitive metadata. Future versions will let each user sign uploads with an Aptos wallet and discover their stored blobs from Shelby's on-chain metadata.
+Shelby is the application's core storage layer. File bytes are uploaded through the Shelby React and TypeScript SDKs after the user signs with an Aptos wallet. The dashboard queries blob metadata associated with the connected wallet and combines it with non-sensitive local metadata such as the original MIME type. Users can search their collection and open each blob in Shelby Explorer.
 
 ## Security notes
 

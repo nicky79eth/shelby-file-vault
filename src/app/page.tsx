@@ -1,16 +1,78 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useAccountBlobs } from "@shelby-protocol/react";
 import FileList from "@/components/FileList";
 import UploadBox from "@/components/UploadBox";
 import WalletButton from "@/components/WalletButton";
+import { shelbyBrowserClient } from "@/lib/shelby-browser";
 import type { StoredFile } from "@/types/file";
 
 const STORAGE_KEY = "shelby-file-vault:v1";
 
 export default function Home() {
+  const { account, connected } = useWallet();
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [ready, setReady] = useState(false);
+  const walletAddress = account?.address.toString();
+  const accountBlobs = useAccountBlobs({
+    client: shelbyBrowserClient,
+    account: walletAddress ?? "0x0",
+    enabled: Boolean(connected && walletAddress),
+  });
+
+  const displayedFiles = useMemo(() => {
+    const localByBlob = new Map(
+      files.map((file) => [
+        `${file.ownerAddress?.toLowerCase()}:${file.blobName}`,
+        file,
+      ]),
+    );
+    const remoteBlobs =
+      connected && walletAddress ? (accountBlobs.data ?? []) : [];
+    const remoteFiles: StoredFile[] = remoteBlobs
+      .filter((blob) => !blob.isDeleted)
+      .map((blob) => {
+        const ownerAddress = blob.owner.toString();
+        const blobName = blob.blobNameSuffix;
+        const local = localByBlob.get(
+          `${ownerAddress.toLowerCase()}:${blobName}`,
+        );
+        const basename = blobName.split("/").pop() ?? blobName;
+
+        return {
+          id: local?.id ?? `shelby:${ownerAddress}:${blobName}`,
+          name: local?.name ?? basename.replace(/^\d+-/, ""),
+          size: blob.size,
+          type: local?.type ?? inferMimeType(basename),
+          uploadedAt:
+            local?.uploadedAt ??
+            new Date(blob.creationMicros / 1000).toISOString(),
+          expiresAt: new Date(blob.expirationMicros / 1000).toISOString(),
+          blobName,
+          ownerAddress,
+          provider: "shelby",
+          syncedFromShelby: !local,
+        };
+      });
+    const remoteKeys = new Set(
+      remoteFiles.map(
+        (file) => `${file.ownerAddress?.toLowerCase()}:${file.blobName}`,
+      ),
+    );
+    const localOnly = files.filter(
+      (file) =>
+        !remoteKeys.has(
+          `${file.ownerAddress?.toLowerCase()}:${file.blobName}`,
+        ),
+    );
+
+    return [...remoteFiles, ...localOnly].sort(
+      (a, b) =>
+        new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime(),
+    );
+  }, [accountBlobs.data, connected, files, walletAddress]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -82,14 +144,50 @@ export default function Home() {
 
         <div className="content-grid">
           <UploadBox onUploaded={addFile} />
-          {ready ? <FileList files={files} onRemove={removeFile} /> : <section className="panel loading">Opening your vault…</section>}
+          {ready ? (
+            <FileList
+              files={displayedFiles}
+              onRemove={removeFile}
+              syncing={accountBlobs.isLoading || accountBlobs.isFetching}
+              syncError={accountBlobs.error?.message}
+            />
+          ) : (
+            <section className="panel loading">Opening your vault…</section>
+          )}
         </div>
       </div>
 
-      <footer>
-        <span>Built for Shelby · Infra / Tooling</span>
-        <span>Open source MVP</span>
+      <footer className="site-footer">
+        <div>
+          <strong>Shelby File Vault</strong>
+          <span>Built for Shelby · Infra / Tooling · Testnet</span>
+        </div>
+        <nav aria-label="Project links">
+          <a href="https://github.com/nicky79eth/shelby-file-vault" target="_blank" rel="noreferrer">GitHub ↗</a>
+          <a href="https://explorer.shelby.xyz/testnet" target="_blank" rel="noreferrer">Explorer ↗</a>
+          <a href="https://docs.shelby.xyz" target="_blank" rel="noreferrer">Docs ↗</a>
+        </nav>
+        <p>Testnet data may be reset and should not be treated as permanent production storage.</p>
       </footer>
     </main>
   );
+}
+
+function inferMimeType(name: string): string {
+  const extension = name.split(".").pop()?.toLowerCase();
+  const types: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    webp: "image/webp",
+    svg: "image/svg+xml",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    pdf: "application/pdf",
+    txt: "text/plain",
+    json: "application/json",
+  };
+
+  return types[extension ?? ""] ?? "application/octet-stream";
 }
