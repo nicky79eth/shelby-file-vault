@@ -20,6 +20,17 @@ function FileIcon({ type }: { type: string }) {
   return <div className="file-icon">{label}</div>;
 }
 
+function getViewUrl(file: StoredFile): string | undefined {
+  if (file.provider === "shelby" && file.ownerAddress) {
+    return (
+      `https://explorer.shelby.xyz/testnet/blobs/${file.ownerAddress}` +
+      `?blobName=${encodeURIComponent(file.blobName)}`
+    );
+  }
+
+  return file.url;
+}
+
 export default function FileList({ files, onRemove }: Props) {
   const [copied, setCopied] = useState("");
 
@@ -63,8 +74,8 @@ export default function FileList({ files, onRemove }: Props) {
                 <code title={file.blobName}>{shortId(file.blobName)}</code>
               </div>
               <div className="file-actions">
-                {file.url ? (
-                  <a className="small-button" href={file.url} target="_blank" rel="noreferrer">
+                {getViewUrl(file) ? (
+                  <a className="small-button" href={getViewUrl(file)} target="_blank" rel="noreferrer">
                     View ↗
                   </a>
                 ) : null}

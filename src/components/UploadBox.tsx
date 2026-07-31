@@ -27,7 +27,9 @@ export default function UploadBox({ onUploaded }: Props) {
 
       const address = account.address.toString();
       const blobName = pendingBlobName.current;
-      const encodedName = blobName.split("/").map(encodeURIComponent).join("/");
+      const explorerUrl =
+        `https://explorer.shelby.xyz/testnet/blobs/${address}` +
+        `?blobName=${encodeURIComponent(blobName)}`;
 
       onUploaded({
         id: crypto.randomUUID(),
@@ -37,7 +39,7 @@ export default function UploadBox({ onUploaded }: Props) {
         uploadedAt: new Date().toISOString(),
         blobName,
         ownerAddress: address,
-        url: `https://api.shelbynet.shelby.xyz/shelby/v1/blobs/${address}/${encodedName}`,
+        url: explorerUrl,
         provider: "shelby",
       });
       setSuccess("Uploaded to Shelby. Your wallet signed the transaction.");
