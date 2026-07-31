@@ -91,7 +91,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .vault-core {
   width: 205px; height: 238px;
   background: linear-gradient(145deg, #25271e, #0e0f0b);
-  clip-path: polygon(50% 0, 91% 13%, 85% 68%, 50% 100%, 15% 68%, 9% 13%);
+  clip-path: polygon(
+    28% 3%, 72% 3%,
+    94% 18%, 100% 44%, 96% 58%,
+    72% 97%, 28% 97%,
+    4% 58%, 0 44%, 6% 18%
+  );
   filter: drop-shadow(0 30px 35px rgba(23,24,19,.28));
   color: var(--acid); display: grid; place-items: center; align-content: center; gap: 12px; transform: rotate(5deg);
   position: relative; z-index: 2;
