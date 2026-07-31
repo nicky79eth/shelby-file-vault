@@ -72,7 +72,7 @@ export default function WalletButton() {
                     <span>{wallet.name.slice(0, 1).toUpperCase()}</span>
                   )}
                 </span>
-                <span>{wallet.name}</span>
+                <span className="wallet-name">{wallet.name}</span>
                 <small>{wallet.readyState}</small>
               </button>
             ))
