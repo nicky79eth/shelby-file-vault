@@ -98,7 +98,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .vault-core small { letter-spacing: .28em; font-weight: 800; font-size: 9px; }
 .orb { position: absolute; border-radius: 50%; filter: blur(.1px); }
 .orb-one { width: 270px; height: 270px; background: var(--acid); right: 2%; top: 8%; }
-.orb-two { width: 180px; height: 180px; border: 2px solid rgba(112,87,255,.4); left: 2%; bottom: 4%; }
+.orb-two { width: 180px; height: 180px; border: 2px solid rgba(255,79,163,.48); left: 2%; bottom: 4%; }
 
 .stats-strip {
   background: var(--ink); color: white; border-radius: 22px; padding: 22px 28px;
