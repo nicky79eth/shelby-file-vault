@@ -12,6 +12,13 @@ export default function AppProviders({ children }: PropsWithChildren) {
     <QueryClientProvider client={queryClient}>
       <AptosWalletAdapterProvider
         autoConnect
+        optInWallets={[
+          "Petra",
+          "Nightly",
+          "Pontem Wallet",
+          "Backpack",
+          "OKX Wallet",
+        ]}
         dappConfig={{
           network: Network.TESTNET,
           aptosApiKeys: {

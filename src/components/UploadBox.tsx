@@ -103,7 +103,7 @@ export default function UploadBox({ onUploaded }: Props) {
 
     try {
       if (!connected || !account || !signAndSubmitTransaction) {
-        throw new Error("Connect your Petra wallet before uploading.");
+        throw new Error("Connect a supported Aptos wallet before uploading.");
       }
 
       if (file.size > 50 * 1024 * 1024) {
@@ -236,7 +236,7 @@ export default function UploadBox({ onUploaded }: Props) {
         )}
       </button>
       <p className="privacy-note">
-        Petra signs the transaction. Your private key never enters this app.
+        Your Aptos wallet signs the transaction. Your private key never enters this app.
       </p>
     </section>
   );
