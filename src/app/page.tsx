@@ -110,7 +110,6 @@ export default function Home() {
           <span>Shelby File <b>Vault</b></span>
         </a>
         <div className="nav-right">
-          <a href="https://docs.shelby.xyz" target="_blank" rel="noreferrer">Docs ↗</a>
           <span className="network-chip"><span /> Testnet</span>
           <WalletButton />
         </div>
