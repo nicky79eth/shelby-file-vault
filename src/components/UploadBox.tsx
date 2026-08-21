@@ -5,6 +5,7 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import { formatBytes } from "@/lib/format";
 import { shelbyBrowserClient } from "@/lib/shelby-browser";
+import { getShelbyExplorerBlobUrl } from "@/lib/shelby-network";
 import type { StoredFile } from "@/types/file";
 
 type UploadStage = "idle" | "preparing" | "signing" | "confirming" | "complete";
@@ -32,9 +33,7 @@ export default function UploadBox({ onUploaded }: Props) {
 
       const address = account.address.toString();
       const blobName = pendingBlobName.current;
-      const explorerUrl =
-        `https://explorer.shelby.xyz/testnet/blobs/${address}` +
-        `?blobName=${encodeURIComponent(blobName)}`;
+      const explorerUrl = getShelbyExplorerBlobUrl(address, blobName);
 
       onUploaded({
         id: crypto.randomUUID(),
@@ -249,7 +248,7 @@ function friendlyUploadError(error: Error): string {
     return "The wallet request was cancelled. Try again when you are ready to sign.";
   }
   if (message.includes("insufficient") || message.includes("balance")) {
-    return "Your wallet may not have enough testnet funds for gas or storage.";
+    return "Your wallet may not have enough ShelbyNet funds for gas or storage.";
   }
   if (
     message.includes("unauthorized") ||
@@ -265,7 +264,7 @@ function friendlyUploadError(error: Error): string {
     return error.message;
   }
 
-  return "Check your wallet, testnet balance, and Shelby configuration, then try again.";
+  return "Check your wallet, ShelbyNet balance, and Shelby configuration, then try again.";
 }
 
 function progressState(

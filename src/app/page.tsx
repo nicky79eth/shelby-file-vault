@@ -7,6 +7,7 @@ import FileList from "@/components/FileList";
 import UploadBox from "@/components/UploadBox";
 import WalletButton from "@/components/WalletButton";
 import { shelbyBrowserClient } from "@/lib/shelby-browser";
+import { SHELBY_EXPLORER_URL } from "@/lib/shelby-network";
 import type { StoredFile } from "@/types/file";
 
 const STORAGE_KEY = "shelby-file-vault:v1";
@@ -110,7 +111,7 @@ export default function Home() {
           <span>Shelby File <b>Vault</b></span>
         </a>
         <div className="nav-right">
-          <span className="network-chip"><span /> Testnet</span>
+          <span className="network-chip"><span /> ShelbyNet</span>
           <WalletButton />
         </div>
       </nav>
@@ -159,14 +160,14 @@ export default function Home() {
       <footer className="site-footer">
         <div>
           <strong>Shelby File Vault</strong>
-          <span>Built for Shelby · Infra / Tooling · Testnet</span>
+          <span>Built for Shelby · Infra / Tooling · ShelbyNet</span>
         </div>
         <nav aria-label="Project links">
           <a href="https://github.com/nicky79eth/shelby-file-vault" target="_blank" rel="noreferrer">GitHub ↗</a>
-          <a href="https://explorer.shelby.xyz/testnet" target="_blank" rel="noreferrer">Explorer ↗</a>
+          <a href={SHELBY_EXPLORER_URL} target="_blank" rel="noreferrer">Explorer ↗</a>
           <a href="https://docs.shelby.xyz" target="_blank" rel="noreferrer">Docs ↗</a>
         </nav>
-        <p>Testnet data may be reset and should not be treated as permanent production storage.</p>
+        <p>ShelbyNet is a prototype network. Data may be reset and should not be treated as permanent production storage.</p>
       </footer>
     </main>
   );

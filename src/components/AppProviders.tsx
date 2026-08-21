@@ -1,9 +1,13 @@
 "use client";
 
-import { Network } from "@aptos-labs/ts-sdk";
 import { AptosWalletAdapterProvider } from "@aptos-labs/wallet-adapter-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PropsWithChildren, useState } from "react";
+import {
+  SHELBY_API_KEY,
+  SHELBY_NETWORK,
+  SHELBY_NETWORK_NAME,
+} from "@/lib/shelby-network";
 
 export default function AppProviders({ children }: PropsWithChildren) {
   const [queryClient] = useState(() => new QueryClient());
@@ -20,9 +24,9 @@ export default function AppProviders({ children }: PropsWithChildren) {
           "OKX Wallet",
         ]}
         dappConfig={{
-          network: Network.TESTNET,
+          network: SHELBY_NETWORK,
           aptosApiKeys: {
-            testnet: process.env.NEXT_PUBLIC_SHELBY_API_KEY,
+            [SHELBY_NETWORK_NAME]: SHELBY_API_KEY,
           },
         }}
       >

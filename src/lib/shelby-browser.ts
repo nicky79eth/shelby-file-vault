@@ -1,7 +1,7 @@
-import { Network } from "@aptos-labs/ts-sdk";
 import { ShelbyClient } from "@shelby-protocol/sdk/browser";
+import { SHELBY_API_KEY, SHELBY_NETWORK } from "@/lib/shelby-network";
 
 export const shelbyBrowserClient = new ShelbyClient({
-  network: Network.TESTNET,
-  apiKey: process.env.NEXT_PUBLIC_SHELBY_API_KEY,
+  network: SHELBY_NETWORK,
+  apiKey: SHELBY_API_KEY,
 });
