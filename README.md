@@ -3,6 +3,7 @@
 A polished, open-source file storage dApp for the Shelby Protocol. Users connect an Aptos wallet, sign their own upload transaction, discover blobs owned by their wallet, copy blob names, and open files in Shelby Explorer.
 
 **Shelby application category:** `Infra / Tooling`
+https://shelby-file-vault.vercel.app
 
 ## What is included
 
