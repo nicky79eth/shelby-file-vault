@@ -2,6 +2,7 @@ import { Network } from "@aptos-labs/ts-sdk";
 
 export const SHELBY_NETWORK = Network.SHELBYNET;
 export const SHELBY_NETWORK_NAME = "shelbynet";
+export const SHELBY_LOCATION_HINT = "shelbynet-1";
 export const SHELBY_EXPLORER_URL =
   `https://explorer.shelby.xyz/${SHELBY_NETWORK_NAME}`;
 export const SHELBY_RPC_URL =
