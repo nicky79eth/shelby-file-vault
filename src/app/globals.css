@@ -131,6 +131,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .selected-details strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .selected-details span { color: var(--muted); font-size: 11px; }
 .icon-button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 9px; background: #ece9df; color: var(--muted); cursor: pointer; font-size: 19px; }
+.expiration-picker { margin: 12px 0 0; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #f6f4ec; }
+.expiration-picker legend { padding: 0 6px; color: var(--ink); font-size: 11px; font-weight: 800; }
+.expiration-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.expiration-options button { min-height: 34px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink); font-size: 11px; font-weight: 750; cursor: pointer; transition: .18s ease; }
+.expiration-options button:hover:not(:disabled) { border-color: var(--acid); background: #ffe9f3; }
+.expiration-options button.selected { border-color: var(--acid); background: var(--acid); color: white; box-shadow: 0 5px 14px rgba(255,79,163,.2); }
+.expiration-options button:disabled { cursor: not-allowed; opacity: .55; }
+.expiration-picker p { margin: 9px 2px 0; color: var(--muted); font-size: 10px; }
 .primary-button {
   border: 0; width: 100%; min-height: 51px; margin-top: 16px; border-radius: 14px; background: var(--ink); color: white;
   font-weight: 750; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px; transition: .2s ease;
