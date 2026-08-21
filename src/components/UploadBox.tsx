@@ -9,6 +9,10 @@ import { getShelbyExplorerBlobUrl } from "@/lib/shelby-network";
 import type { StoredFile } from "@/types/file";
 
 type UploadStage = "idle" | "preparing" | "signing" | "confirming" | "complete";
+type ExpirationDays = 7 | 30 | 90 | 365;
+
+const EXPIRATION_OPTIONS: ExpirationDays[] = [7, 30, 90, 365];
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 type Props = {
   onUploaded: (file: StoredFile) => void;
@@ -18,7 +22,9 @@ export default function UploadBox({ onUploaded }: Props) {
   const { account, connected, signAndSubmitTransaction } = useWallet();
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingBlobName = useRef("");
+  const pendingExpirationMicros = useRef(0);
   const [file, setFile] = useState<File | null>(null);
+  const [expirationDays, setExpirationDays] = useState<ExpirationDays>(30);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [technicalError, setTechnicalError] = useState("");
@@ -41,9 +47,7 @@ export default function UploadBox({ onUploaded }: Props) {
         size: file.size,
         type: file.type || "application/octet-stream",
         uploadedAt: new Date().toISOString(),
-        expiresAt: new Date(
-          Date.now() + 30 * 24 * 60 * 60 * 1000,
-        ).toISOString(),
+        expiresAt: new Date(pendingExpirationMicros.current / 1000).toISOString(),
         blobName,
         ownerAddress: address,
         url: explorerUrl,
@@ -113,8 +117,8 @@ export default function UploadBox({ onUploaded }: Props) {
       const blobName = `vault/${Date.now()}-${safeName(file.name)}`;
       pendingBlobName.current = blobName;
       const blobData = new Uint8Array(await file.arrayBuffer());
-      const expirationMicros =
-        (Date.now() + 30 * 24 * 60 * 60 * 1000) * 1000;
+      const expirationMicros = (Date.now() + expirationDays * DAY_MS) * 1000;
+      pendingExpirationMicros.current = expirationMicros;
 
       setStage("signing");
       uploadBlobs.mutate({
@@ -176,22 +180,42 @@ export default function UploadBox({ onUploaded }: Props) {
       </div>
 
       {file ? (
-        <div className="selected-file">
-          <div className="file-mark">
-            {file.name.split(".").pop()?.slice(0, 4) || "FILE"}
+        <>
+          <div className="selected-file">
+            <div className="file-mark">
+              {file.name.split(".").pop()?.slice(0, 4) || "FILE"}
+            </div>
+            <div className="selected-details">
+              <strong>{file.name}</strong>
+              <span>{formatBytes(file.size)} · Ready to upload</span>
+            </div>
+            <button
+              className="icon-button"
+              onClick={() => setFile(null)}
+              aria-label="Remove file"
+            >
+              ×
+            </button>
           </div>
-          <div className="selected-details">
-            <strong>{file.name}</strong>
-            <span>{formatBytes(file.size)} · Ready to upload</span>
-          </div>
-          <button
-            className="icon-button"
-            onClick={() => setFile(null)}
-            aria-label="Remove file"
-          >
-            ×
-          </button>
-        </div>
+
+          <fieldset className="expiration-picker" disabled={uploadBlobs.isPending}>
+            <legend>File expiration</legend>
+            <div className="expiration-options">
+              {EXPIRATION_OPTIONS.map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  className={expirationDays === days ? "selected" : ""}
+                  onClick={() => setExpirationDays(days)}
+                  aria-pressed={expirationDays === days}
+                >
+                  {days}d
+                </button>
+              ))}
+            </div>
+            <p>Stored for {expirationDays} days after upload.</p>
+          </fieldset>
+        </>
       ) : null}
 
       {uploadBlobs.isPending || stage === "preparing" ? (
