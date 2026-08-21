@@ -50,8 +50,7 @@ export default function Home() {
           uploadedAt:
             local?.uploadedAt ??
             new Date(blob.creationMicros / 1000).toISOString(),
-          // Shelby SDK 0.8 no longer exposes expiration in account-list metadata.
-          expiresAt: local?.expiresAt,
+          expiresAt: new Date(blob.expirationMicros / 1000).toISOString(),
           blobName,
           ownerAddress,
           provider: "shelby",

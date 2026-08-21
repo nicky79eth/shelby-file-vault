@@ -41,6 +41,9 @@ export default function UploadBox({ onUploaded }: Props) {
         size: file.size,
         type: file.type || "application/octet-stream",
         uploadedAt: new Date().toISOString(),
+        expiresAt: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         blobName,
         ownerAddress: address,
         url: explorerUrl,
@@ -110,6 +113,9 @@ export default function UploadBox({ onUploaded }: Props) {
       const blobName = `vault/${Date.now()}-${safeName(file.name)}`;
       pendingBlobName.current = blobName;
       const blobData = new Uint8Array(await file.arrayBuffer());
+      const expirationMicros =
+        (Date.now() + 30 * 24 * 60 * 60 * 1000) * 1000;
+
       setStage("signing");
       uploadBlobs.mutate({
         signer: {
@@ -121,6 +127,7 @@ export default function UploadBox({ onUploaded }: Props) {
           },
         },
         blobs: [{ blobName, blobData }],
+        expirationMicros,
       });
     } catch (reason) {
       const uploadError =
