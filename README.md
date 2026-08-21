@@ -37,13 +37,13 @@ Add your Shelby Client key to `.env.local`, then open [http://localhost:3000](ht
 The upload path follows Shelby's official React SDK flow: the app requests a signature from the connected wallet, registers the blob commitment, uploads the bytes, and returns the owner and retrieval URL.
 
 1. Install Petra or another Aptos wallet supported by the wallet adapter.
-2. Select the required test network and fund the wallet with gas and Shelby storage assets.
+2. Select ShelbyNet and fund the wallet with ShelbyNet APT and ShelbyUSD.
 3. Create a **Client** API key in Geomi and allow `http://localhost:3000`.
 4. Copy `.env.example` to `.env.local`.
 5. Set:
 
 ```dotenv
-NEXT_PUBLIC_SHELBY_API_KEY=your_client_api_key
+NEXT_PUBLIC_SHELBYNET_API_KEY=your_client_api_key
 ```
 
 6. Restart `npm run dev`, upload a small test file, then use **View** to retrieve it.
@@ -104,7 +104,7 @@ Deploy to any Node-compatible Next.js host. For Vercel:
 
 1. Import this repository.
 2. Add the environment variables from `.env.example`.
-3. Add `NEXT_PUBLIC_SHELBY_API_KEY` using your restricted Client key.
+3. Add `NEXT_PUBLIC_SHELBYNET_API_KEY` using your restricted Client key.
 4. Deploy and test a small upload.
 
 Add the deployed Vercel domain to the Client key's allowed Web App URLs, then redeploy. The app never receives the user's private key.

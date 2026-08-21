@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { formatBytes, shortId } from "@/lib/format";
+import {
+  getShelbyExplorerBlobUrl,
+  getShelbyRawBlobUrl,
+} from "@/lib/shelby-network";
 import type { StoredFile } from "@/types/file";
 
 type Props = {
@@ -24,21 +28,14 @@ function FileIcon({ type }: { type: string }) {
 
 function getExplorerUrl(file: StoredFile): string | undefined {
   if (file.provider === "shelby" && file.ownerAddress) {
-    return (
-      `https://explorer.shelby.xyz/testnet/blobs/${file.ownerAddress}` +
-      `?blobName=${encodeURIComponent(file.blobName)}`
-    );
+    return getShelbyExplorerBlobUrl(file.ownerAddress, file.blobName);
   }
   return file.url;
 }
 
 function getRawUrl(file: StoredFile): string | undefined {
   if (!file.ownerAddress) return undefined;
-  const encodedName = file.blobName
-    .split("/")
-    .map(encodeURIComponent)
-    .join("/");
-  return `https://api.testnet.shelby.xyz/shelby/v1/blobs/${file.ownerAddress}/${encodedName}`;
+  return getShelbyRawBlobUrl(file.ownerAddress, file.blobName);
 }
 
 function shortAddress(address?: string) {
