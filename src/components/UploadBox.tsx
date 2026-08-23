@@ -24,6 +24,7 @@ export default function UploadBox({ onUploaded }: Props) {
   const pendingBlobName = useRef("");
   const pendingExpirationMicros = useRef(0);
   const [file, setFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState("");
   const [expirationDays, setExpirationDays] = useState<ExpirationDays>(30);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
@@ -43,7 +44,7 @@ export default function UploadBox({ onUploaded }: Props) {
 
       onUploaded({
         id: crypto.randomUUID(),
-        name: file.name,
+        name: fileName,
         size: file.size,
         type: file.type || "application/octet-stream",
         uploadedAt: new Date().toISOString(),
@@ -56,6 +57,7 @@ export default function UploadBox({ onUploaded }: Props) {
       setSuccess("Uploaded to Shelby. Your file is ready in the explorer.");
       setStage("complete");
       setFile(null);
+      setFileName("");
       if (inputRef.current) inputRef.current.value = "";
     },
     onError: (reason) => {
@@ -86,6 +88,7 @@ export default function UploadBox({ onUploaded }: Props) {
   function choose(nextFile?: File) {
     if (!nextFile) return;
     setFile(nextFile);
+    setFileName(nextFile.name);
     resetMessages();
   }
 
@@ -113,8 +116,14 @@ export default function UploadBox({ onUploaded }: Props) {
         throw new Error("File must be 50 MB or smaller.");
       }
 
+      const trimmedFileName = fileName.trim();
+      if (!trimmedFileName) {
+        throw new Error("Please enter a file name before uploading.");
+      }
+
       setStage("preparing");
-      const blobName = `vault/${Date.now()}-${safeName(file.name)}`;
+      const safeFileName = safeName(trimmedFileName);
+      const blobName = `vault/${Date.now()}-${safeFileName}`;
       pendingBlobName.current = blobName;
       const blobData = new Uint8Array(await file.arrayBuffer());
       const expirationMicros = (Date.now() + expirationDays * DAY_MS) * 1000;
@@ -183,15 +192,30 @@ export default function UploadBox({ onUploaded }: Props) {
         <>
           <div className="selected-file">
             <div className="file-mark">
-              {file.name.split(".").pop()?.slice(0, 4) || "FILE"}
+              {fileName.split(".").pop()?.slice(0, 4) || "FILE"}
             </div>
             <div className="selected-details">
-              <strong>{file.name}</strong>
+              <label className="file-name-label" htmlFor="upload-file-name">
+                File name
+              </label>
+              <input
+                id="upload-file-name"
+                className="file-name-input"
+                value={fileName}
+                onChange={(event) => setFileName(event.target.value)}
+                disabled={uploadBlobs.isPending}
+                maxLength={120}
+                spellCheck={false}
+                aria-label="File name"
+              />
               <span>{formatBytes(file.size)} · Ready to upload</span>
             </div>
             <button
               className="icon-button"
-              onClick={() => setFile(null)}
+              onClick={() => {
+                setFile(null);
+                setFileName("");
+              }}
               aria-label="Remove file"
             >
               ×
@@ -245,7 +269,7 @@ export default function UploadBox({ onUploaded }: Props) {
       <button
         className="primary-button"
         onClick={upload}
-        disabled={!file || uploadBlobs.isPending}
+        disabled={!file || !fileName.trim() || uploadBlobs.isPending}
       >
         {uploadBlobs.isPending ? (
           <>
