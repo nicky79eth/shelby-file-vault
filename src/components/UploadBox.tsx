@@ -10,9 +10,11 @@ import type { StoredFile } from "@/types/file";
 
 type UploadStage = "idle" | "preparing" | "signing" | "confirming" | "complete";
 type ExpirationDays = 7 | 30 | 90 | 365;
+type PendingFile = { id: string; file: File; name: string };
 
 const EXPIRATION_OPTIONS: ExpirationDays[] = [7, 30, 90, 365];
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 type Props = {
   onUploaded: (file: StoredFile) => void;
@@ -21,10 +23,10 @@ type Props = {
 export default function UploadBox({ onUploaded }: Props) {
   const { account, connected, signAndSubmitTransaction } = useWallet();
   const inputRef = useRef<HTMLInputElement>(null);
-  const pendingBlobName = useRef("");
+  const pendingUpload = useRef<PendingFile[]>([]);
+  const pendingBlobNames = useRef<string[]>([]);
   const pendingExpirationMicros = useRef(0);
-  const [file, setFile] = useState<File | null>(null);
-  const [fileName, setFileName] = useState("");
+  const [files, setFiles] = useState<PendingFile[]>([]);
   const [expirationDays, setExpirationDays] = useState<ExpirationDays>(30);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
@@ -36,28 +38,38 @@ export default function UploadBox({ onUploaded }: Props) {
   const uploadBlobs = useUploadBlobs({
     client: shelbyBrowserClient,
     onSuccess: () => {
-      if (!file || !account) return;
+      if (!account || pendingUpload.current.length === 0) return;
 
       const address = account.address.toString();
-      const blobName = pendingBlobName.current;
-      const explorerUrl = getShelbyExplorerBlobUrl(address, blobName);
+      const expiresAt = new Date(pendingExpirationMicros.current / 1000).toISOString();
 
-      onUploaded({
-        id: crypto.randomUUID(),
-        name: fileName,
-        size: file.size,
-        type: file.type || "application/octet-stream",
-        uploadedAt: new Date().toISOString(),
-        expiresAt: new Date(pendingExpirationMicros.current / 1000).toISOString(),
-        blobName,
-        ownerAddress: address,
-        url: explorerUrl,
-        provider: "shelby",
+      pendingUpload.current.forEach((item, index) => {
+        const blobName = pendingBlobNames.current[index];
+        if (!blobName) return;
+
+        onUploaded({
+          id: crypto.randomUUID(),
+          name: item.name,
+          size: item.file.size,
+          type: item.file.type || "application/octet-stream",
+          uploadedAt: new Date().toISOString(),
+          expiresAt,
+          blobName,
+          ownerAddress: address,
+          url: getShelbyExplorerBlobUrl(address, blobName),
+          provider: "shelby",
+        });
       });
-      setSuccess("Uploaded to Shelby. Your file is ready in the explorer.");
+
+      setSuccess(
+        pendingUpload.current.length === 1
+          ? "Uploaded to Shelby. Your file is ready in the explorer."
+          : `${pendingUpload.current.length} files uploaded to Shelby successfully.`,
+      );
       setStage("complete");
-      setFile(null);
-      setFileName("");
+      setFiles([]);
+      pendingUpload.current = [];
+      pendingBlobNames.current = [];
       if (inputRef.current) inputRef.current.value = "";
     },
     onError: (reason) => {
@@ -85,25 +97,52 @@ export default function UploadBox({ onUploaded }: Props) {
     setStage("idle");
   }
 
-  function choose(nextFile?: File) {
-    if (!nextFile) return;
-    setFile(nextFile);
-    setFileName(nextFile.name);
-    resetMessages();
+  function addFiles(nextFiles: File[]) {
+    const validFiles = nextFiles.filter((file) => file.size <= MAX_FILE_SIZE);
+
+    if (validFiles.length === 0) {
+      setError("Each file must be 50 MB or smaller.");
+      return;
+    }
+
+    if (validFiles.length !== nextFiles.length) {
+      setError("Some files were skipped because they are larger than 50 MB.");
+    } else {
+      resetMessages();
+    }
+
+    setFiles((current) => [
+      ...current,
+      ...validFiles.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        name: file.name,
+      })),
+    ]);
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    choose(event.target.files?.[0]);
+    addFiles(Array.from(event.target.files ?? []));
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDragging(false);
-    choose(event.dataTransfer.files?.[0]);
+    addFiles(Array.from(event.dataTransfer.files));
+  }
+
+  function updateFileName(id: string, name: string) {
+    setFiles((current) =>
+      current.map((item) => (item.id === id ? { ...item, name } : item)),
+    );
+  }
+
+  function removeFile(id: string) {
+    setFiles((current) => current.filter((item) => item.id !== id));
   }
 
   async function upload() {
-    if (!file || uploadBlobs.isPending) return;
+    if (files.length === 0 || uploadBlobs.isPending) return;
 
     resetMessages();
 
@@ -112,22 +151,33 @@ export default function UploadBox({ onUploaded }: Props) {
         throw new Error("Connect a supported Aptos wallet before uploading.");
       }
 
-      if (file.size > 50 * 1024 * 1024) {
-        throw new Error("File must be 50 MB or smaller.");
+      const invalidName = files.find((item) => !item.name.trim());
+      if (invalidName) {
+        throw new Error("Please enter a file name for every selected file.");
       }
 
-      const trimmedFileName = fileName.trim();
-      if (!trimmedFileName) {
-        throw new Error("Please enter a file name before uploading.");
+      if (files.some((item) => item.file.size > MAX_FILE_SIZE)) {
+        throw new Error("Each file must be 50 MB or smaller.");
       }
 
       setStage("preparing");
-      const safeFileName = safeName(trimmedFileName);
-      const blobName = `vault/${Date.now()}-${safeFileName}`;
-      pendingBlobName.current = blobName;
-      const blobData = new Uint8Array(await file.arrayBuffer());
+      const timestamp = Date.now();
+      const uploadItems = files.map((item, index) => ({
+        ...item,
+        blobName: `vault/${timestamp}-${index}-${safeName(item.name.trim())}`,
+      }));
       const expirationMicros = (Date.now() + expirationDays * DAY_MS) * 1000;
+
+      pendingUpload.current = uploadItems;
+      pendingBlobNames.current = uploadItems.map((item) => item.blobName);
       pendingExpirationMicros.current = expirationMicros;
+
+      const blobs = await Promise.all(
+        uploadItems.map(async (item) => ({
+          blobName: item.blobName,
+          blobData: new Uint8Array(await item.file.arrayBuffer()),
+        })),
+      );
 
       setStage("signing");
       uploadBlobs.mutate({
@@ -139,7 +189,7 @@ export default function UploadBox({ onUploaded }: Props) {
             return response;
           },
         },
-        blobs: [{ blobName, blobData }],
+        blobs,
         expirationMicros,
       });
     } catch (reason) {
@@ -182,44 +232,64 @@ export default function UploadBox({ onUploaded }: Props) {
           }
         }}
       >
-        <input ref={inputRef} type="file" onChange={handleChange} hidden />
+        <input
+          ref={inputRef}
+          type="file"
+          onChange={handleChange}
+          hidden
+          multiple
+        />
         <div className="upload-icon" aria-hidden="true">↑</div>
-        <strong>Drop your file here</strong>
-        <p>or click to browse · max 50 MB</p>
+        <strong>Drop your files here</strong>
+        <p>or click to browse · multiple files · max 50 MB each</p>
       </div>
 
-      {file ? (
+      {files.length > 0 ? (
         <>
-          <div className="selected-file">
-            <div className="file-mark">
-              {fileName.split(".").pop()?.slice(0, 4) || "FILE"}
-            </div>
-            <div className="selected-details">
-              <label className="file-name-label" htmlFor="upload-file-name">
-                File name
-              </label>
-              <input
-                id="upload-file-name"
-                className="file-name-input"
-                value={fileName}
-                onChange={(event) => setFileName(event.target.value)}
-                disabled={uploadBlobs.isPending}
-                maxLength={120}
-                spellCheck={false}
-                aria-label="File name"
-              />
-              <span>{formatBytes(file.size)} · Ready to upload</span>
-            </div>
+          <div className="selected-files-heading">
+            <strong>{files.length} {files.length === 1 ? "file" : "files"} selected</strong>
             <button
-              className="icon-button"
-              onClick={() => {
-                setFile(null);
-                setFileName("");
-              }}
-              aria-label="Remove file"
+              type="button"
+              className="add-more-button"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploadBlobs.isPending}
             >
-              ×
+              + Add more files
             </button>
+          </div>
+
+          <div className="selected-files-list">
+            {files.map((item, index) => (
+              <div className="selected-file" key={item.id}>
+                <div className="file-mark">
+                  {item.name.split(".").pop()?.slice(0, 4) || "FILE"}
+                </div>
+                <div className="selected-details">
+                  <label className="file-name-label" htmlFor={`upload-file-name-${item.id}`}>
+                    File {index + 1} name
+                  </label>
+                  <input
+                    id={`upload-file-name-${item.id}`}
+                    className="file-name-input"
+                    value={item.name}
+                    onChange={(event) => updateFileName(item.id, event.target.value)}
+                    disabled={uploadBlobs.isPending}
+                    maxLength={120}
+                    spellCheck={false}
+                    aria-label={`File ${index + 1} name`}
+                  />
+                  <span>{formatBytes(item.file.size)} · Ready to upload</span>
+                </div>
+                <button
+                  className="icon-button"
+                  onClick={() => removeFile(item.id)}
+                  disabled={uploadBlobs.isPending}
+                  aria-label={`Remove ${item.name}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
 
           <fieldset className="expiration-picker" disabled={uploadBlobs.isPending}>
@@ -244,7 +314,7 @@ export default function UploadBox({ onUploaded }: Props) {
 
       {uploadBlobs.isPending || stage === "preparing" ? (
         <ol className="upload-progress" aria-label="Upload progress">
-          <ProgressStep label="Prepare file" state={progressState(stage, "preparing")} />
+          <ProgressStep label="Prepare files" state={progressState(stage, "preparing")} />
           <ProgressStep label="Sign in wallet" state={progressState(stage, "signing")} />
           <ProgressStep label="Confirm & store" state={progressState(stage, "confirming")} />
         </ol>
@@ -269,15 +339,17 @@ export default function UploadBox({ onUploaded }: Props) {
       <button
         className="primary-button"
         onClick={upload}
-        disabled={!file || !fileName.trim() || uploadBlobs.isPending}
+        disabled={files.length === 0 || files.some((item) => !item.name.trim()) || uploadBlobs.isPending}
       >
         {uploadBlobs.isPending ? (
           <>
-            <span className="spinner" /> Working with Shelby…
+            <span className="spinner" /> Uploading {files.length} {files.length === 1 ? "file" : "files"}…
           </>
         ) : (
           <>
-            {connected ? "Sign & upload to Shelby" : "Connect wallet to upload"}
+            {connected
+              ? `Sign & upload ${files.length || ""} ${files.length === 1 ? "file" : "files"} to Shelby`
+              : "Connect wallet to upload"}
             <span>↗</span>
           </>
         )}
