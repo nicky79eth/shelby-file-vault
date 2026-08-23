@@ -10,7 +10,7 @@ import type { StoredFile } from "@/types/file";
 
 type UploadStage = "idle" | "preparing" | "signing" | "confirming" | "complete";
 type ExpirationDays = 7 | 30 | 90 | 365;
-type PendingFile = { id: string; file: File; name: string };
+type PendingFile = { id: string; file: File; name: string; status: "pending" | "uploading" | "done" };
 
 const EXPIRATION_OPTIONS: ExpirationDays[] = [7, 30, 90, 365];
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -75,6 +75,7 @@ export default function UploadBox({ onUploaded }: Props) {
     onError: (reason) => {
       setError(friendlyUploadError(reason));
       setTechnicalError(reason.message);
+      setFiles((current) => current.map((item) => ({ ...item, status: "pending" })));
       setStage("idle");
     },
   });
@@ -117,12 +118,14 @@ export default function UploadBox({ onUploaded }: Props) {
         id: crypto.randomUUID(),
         file,
         name: file.name,
+        status: "pending" as const,
       })),
     ]);
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     addFiles(Array.from(event.target.files ?? []));
+    event.target.value = "";
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
@@ -180,6 +183,7 @@ export default function UploadBox({ onUploaded }: Props) {
       );
 
       setStage("signing");
+      setFiles((current) => current.map((item) => ({ ...item, status: "uploading" })));
       uploadBlobs.mutate({
         signer: {
           account: account.address,
@@ -200,6 +204,10 @@ export default function UploadBox({ onUploaded }: Props) {
       setStage("idle");
     }
   }
+
+  const completedCount = stage === "complete" ? files.length : 0;
+  const totalCount = files.length;
+  const progressPercent = totalCount > 0 && stage === "complete" ? 100 : stage === "confirming" ? 90 : stage === "signing" ? 55 : stage === "preparing" ? 20 : 0;
 
   return (
     <section className="panel upload-panel" aria-labelledby="upload-title">
@@ -227,18 +235,10 @@ export default function UploadBox({ onUploaded }: Props) {
         role="button"
         tabIndex={0}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            inputRef.current?.click();
-          }
+          if (event.key === "Enter" || event.key === " ") inputRef.current?.click();
         }}
       >
-        <input
-          ref={inputRef}
-          type="file"
-          onChange={handleChange}
-          hidden
-          multiple
-        />
+        <input ref={inputRef} type="file" onChange={handleChange} hidden multiple />
         <div className="upload-icon" aria-hidden="true">↑</div>
         <strong>Drop your files here</strong>
         <p>or click to browse · multiple files · max 50 MB each</p>
@@ -260,10 +260,8 @@ export default function UploadBox({ onUploaded }: Props) {
 
           <div className="selected-files-list">
             {files.map((item, index) => (
-              <div className="selected-file" key={item.id}>
-                <div className="file-mark">
-                  {item.name.split(".").pop()?.slice(0, 4) || "FILE"}
-                </div>
+              <div className={`selected-file upload-file-item ${item.status}`} key={item.id}>
+                <div className="file-mark">{item.name.split(".").pop()?.slice(0, 4) || "FILE"}</div>
                 <div className="selected-details">
                   <label className="file-name-label" htmlFor={`upload-file-name-${item.id}`}>
                     File {index + 1} name
@@ -278,7 +276,11 @@ export default function UploadBox({ onUploaded }: Props) {
                     spellCheck={false}
                     aria-label={`File ${index + 1} name`}
                   />
-                  <span>{formatBytes(item.file.size)} · Ready to upload</span>
+                  <div className="file-upload-status">
+                    <span>{formatBytes(item.file.size)}</span>
+                    <span className="status-dot" />
+                    <span>{item.status === "uploading" ? "Uploading…" : item.status === "done" ? "Uploaded" : "Ready"}</span>
+                  </div>
                 </div>
                 <button
                   className="icon-button"
@@ -286,25 +288,28 @@ export default function UploadBox({ onUploaded }: Props) {
                   disabled={uploadBlobs.isPending}
                   aria-label={`Remove ${item.name}`}
                 >
-                  ×
+                  {item.status === "done" ? "✓" : "×"}
                 </button>
               </div>
             ))}
           </div>
 
+          {uploadBlobs.isPending || stage === "preparing" || stage === "complete" ? (
+            <div className="overall-progress" aria-label="Overall upload progress">
+              <div className="overall-progress-top">
+                <strong>{stage === "complete" ? "Upload complete" : stage === "confirming" ? "Storing files on Shelby" : stage === "signing" ? "Uploading files" : "Preparing files"}</strong>
+                <span>{stage === "complete" ? totalCount : `${progressPercent}%`}</span>
+              </div>
+              <div className="progress-track"><div className="progress-fill" style={{ width: `${progressPercent}%` }} /></div>
+              <p>{stage === "complete" ? `${completedCount} of ${totalCount} files uploaded successfully.` : `Processing ${totalCount} ${totalCount === 1 ? "file" : "files"}…`}</p>
+            </div>
+          ) : null}
+
           <fieldset className="expiration-picker" disabled={uploadBlobs.isPending}>
             <legend>File expiration</legend>
             <div className="expiration-options">
               {EXPIRATION_OPTIONS.map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  className={expirationDays === days ? "selected" : ""}
-                  onClick={() => setExpirationDays(days)}
-                  aria-pressed={expirationDays === days}
-                >
-                  {days}d
-                </button>
+                <button key={days} type="button" className={expirationDays === days ? "selected" : ""} onClick={() => setExpirationDays(days)} aria-pressed={expirationDays === days}>{days}d</button>
               ))}
             </div>
             <p>Stored for {expirationDays} days after upload.</p>
@@ -322,95 +327,39 @@ export default function UploadBox({ onUploaded }: Props) {
 
       {error ? (
         <div className="error-message">
-          <strong>Upload failed</strong>
-          <p>{error}</p>
-          {technicalError ? (
-            <>
-              <button onClick={() => setShowDetails((value) => !value)}>
-                {showDetails ? "Hide technical details" : "Show technical details"}
-              </button>
-              {showDetails ? <code>{technicalError}</code> : null}
-            </>
-          ) : null}
+          <strong>Upload failed</strong><p>{error}</p>
+          {technicalError ? <><button onClick={() => setShowDetails((value) => !value)}>{showDetails ? "Hide technical details" : "Show technical details"}</button>{showDetails ? <code>{technicalError}</code> : null}</> : null}
         </div>
       ) : null}
       {success ? <p className="success-message">{success}</p> : null}
 
-      <button
-        className="primary-button"
-        onClick={upload}
-        disabled={files.length === 0 || files.some((item) => !item.name.trim()) || uploadBlobs.isPending}
-      >
-        {uploadBlobs.isPending ? (
-          <>
-            <span className="spinner" /> Uploading {files.length} {files.length === 1 ? "file" : "files"}…
-          </>
-        ) : (
-          <>
-            {connected
-              ? `Sign & upload ${files.length || ""} ${files.length === 1 ? "file" : "files"} to Shelby`
-              : "Connect wallet to upload"}
-            <span>↗</span>
-          </>
-        )}
+      <button className="primary-button" onClick={upload} disabled={files.length === 0 || files.some((item) => !item.name.trim()) || uploadBlobs.isPending}>
+        {uploadBlobs.isPending ? <><span className="spinner" /> Uploading {files.length} {files.length === 1 ? "file" : "files"}…</> : <>{connected ? `Sign & upload ${files.length || ""} ${files.length === 1 ? "file" : "files"} to Shelby` : "Connect wallet to upload"}<span>↗</span></>}
       </button>
-      <p className="privacy-note">
-        Your Aptos wallet signs the transaction. Your private key never enters this app.
-      </p>
+      <p className="privacy-note">Your Aptos wallet signs the transaction. Your private key never enters this app.</p>
     </section>
   );
 }
 
 function friendlyUploadError(error: Error): string {
   const message = error.message.toLowerCase();
-
-  if (message.includes("reject") || message.includes("cancel")) {
-    return "The wallet request was cancelled. Try again when you are ready to sign.";
-  }
-  if (message.includes("insufficient") || message.includes("balance")) {
-    return "Your wallet may not have enough ShelbyNet funds for gas or storage.";
-  }
-  if (
-    message.includes("unauthorized") ||
-    message.includes("api key") ||
-    message.includes("401")
-  ) {
-    return "Shelby could not authorize this app. Check the Client API key and allowed website URL.";
-  }
-  if (message.includes("network") || message.includes("fetch")) {
-    return "The Shelby network could not be reached. Check your connection and try again.";
-  }
-  if (message.includes("10 mb") || message.includes("connect your")) {
-    return error.message;
-  }
-
+  if (message.includes("reject") || message.includes("cancel")) return "The wallet request was cancelled. Try again when you are ready to sign.";
+  if (message.includes("insufficient") || message.includes("balance")) return "Your wallet may not have enough ShelbyNet funds for gas or storage.";
+  if (message.includes("unauthorized") || message.includes("api key") || message.includes("401")) return "Shelby could not authorize this app. Check the Client API key and allowed website URL.";
+  if (message.includes("network") || message.includes("fetch")) return "The Shelby network could not be reached. Check your connection and try again.";
+  if (message.includes("10 mb") || message.includes("connect your")) return error.message;
   return "Check your wallet, ShelbyNet balance, and Shelby configuration, then try again.";
 }
 
-function progressState(
-  current: UploadStage,
-  step: Exclude<UploadStage, "idle" | "complete">,
-): "done" | "active" | "pending" {
+function progressState(current: UploadStage, step: Exclude<UploadStage, "idle" | "complete">): "done" | "active" | "pending" {
   const order: UploadStage[] = ["preparing", "signing", "confirming", "complete"];
   const currentIndex = order.indexOf(current);
   const stepIndex = order.indexOf(step);
-
   if (currentIndex > stepIndex) return "done";
   if (current === step) return "active";
   return "pending";
 }
 
-function ProgressStep({
-  label,
-  state,
-}: {
-  label: string;
-  state: "done" | "active" | "pending";
-}) {
-  return (
-    <li className={state}>
-      <span>{state === "done" ? "✓" : state === "active" ? "•" : ""}</span>
-      {label}
-    </li>
-  );
+function ProgressStep({ label, state }: { label: string; state: "done" | "active" | "pending" }) {
+  return <li className={state}><span>{state === "done" ? "✓" : state === "active" ? "•" : ""}</span>{label}</li>;
 }
