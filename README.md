@@ -31,7 +31,7 @@ copy .env.example .env.local
 npm run dev
 ```
 
-Add your Shelby Client key to `.env.local`, then open [http://localhost:3000](http://localhost:3000).
+Add your Shelby Client key to `.env.local`, then open https://shelby-file-vault.vercel.app
 
 ## Enable real Shelby uploads
 
