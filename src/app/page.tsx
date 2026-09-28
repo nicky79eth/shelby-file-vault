@@ -69,10 +69,8 @@ export default function Home() {
     );
     const visibleRemoteBlobs =
       connected && walletAddress ? remoteBlobs : [];
-    const remoteFiles: StoredFile[] = visibleRemoteBlobs
-      .filter((blob) => !blob.isDeleted)
-      .map((blob) => {
-        const ownerAddress = blob.owner.toString();
+    const remoteFiles: StoredFile[] = visibleRemoteBlobs.map((blob) => {
+        const ownerAddress = walletAddress ?? "";
         const blobName = blob.blobNameSuffix;
         const local = localByBlob.get(
           `${ownerAddress.toLowerCase()}:${blobName}`,
