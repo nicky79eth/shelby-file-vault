@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { useAccountBlobs } from "@shelby-protocol/react";
 import FileList from "@/components/FileList";
 import UploadBox from "@/components/UploadBox";
 import WalletButton from "@/components/WalletButton";
@@ -16,12 +15,50 @@ export default function Home() {
   const { account, connected } = useWallet();
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [ready, setReady] = useState(false);
+  const [remoteBlobs, setRemoteBlobs] = useState<Awaited<
+    ReturnType<typeof shelbyBrowserClient.coordination.getAccountBlobs>
+  >>([]);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | undefined>();
   const walletAddress = account?.address.toString();
-  const accountBlobs = useAccountBlobs({
-    client: shelbyBrowserClient,
-    account: walletAddress ?? "0x0",
-    enabled: Boolean(connected && walletAddress),
-  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncBlobs() {
+      if (!connected || !walletAddress) {
+        setRemoteBlobs([]);
+        setSyncLoading(false);
+        setSyncError(undefined);
+        return;
+      }
+
+      setSyncLoading(true);
+      setSyncError(undefined);
+
+      try {
+        const blobs = await shelbyBrowserClient.coordination.getAccountBlobs({
+          account: walletAddress,
+        });
+        if (!cancelled) setRemoteBlobs(blobs);
+      } catch (error) {
+        if (!cancelled) {
+          setRemoteBlobs([]);
+          setSyncError(
+            error instanceof Error ? error.message : "Failed to load Shelby blobs",
+          );
+        }
+      } finally {
+        if (!cancelled) setSyncLoading(false);
+      }
+    }
+
+    void syncBlobs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connected, walletAddress]);
 
   const displayedFiles = useMemo(() => {
     const localByBlob = new Map(
@@ -31,7 +68,7 @@ export default function Home() {
       ]),
     );
     const remoteBlobs =
-      connected && walletAddress ? (accountBlobs.data ?? []) : [];
+      connected && walletAddress ? remoteBlobs : [];
     const remoteFiles: StoredFile[] = remoteBlobs
       .filter((blob) => !blob.isDeleted)
       .map((blob) => {
@@ -73,7 +110,7 @@ export default function Home() {
       (a, b) =>
         new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime(),
     );
-  }, [accountBlobs.data, connected, files, walletAddress]);
+  }, [connected, files, remoteBlobs, walletAddress]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -148,8 +185,8 @@ export default function Home() {
             <FileList
               files={displayedFiles}
               onRemove={removeFile}
-              syncing={accountBlobs.isLoading || accountBlobs.isFetching}
-              syncError={accountBlobs.error?.message}
+              syncing={syncLoading}
+              syncError={syncError}
             />
           ) : (
             <section className="panel loading">Opening your vault…</section>
