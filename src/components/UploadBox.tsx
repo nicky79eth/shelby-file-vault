@@ -205,7 +205,11 @@ export default function UploadBox({ onUploaded }: Props) {
           },
         },
         blobs,
+        // The published React 4.3 types omit this field, but the upload
+        // mutation accepts the same expiration option used by Shelby's SDK.
         expirationMicros,
+      } as Parameters<typeof uploadBlobs.mutateAsync>[0] & {
+        expirationMicros: number;
       });
     } catch (reason) {
       const uploadError =
