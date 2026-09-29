@@ -184,13 +184,23 @@ export default function UploadBox({ onUploaded }: Props) {
 
       setStage("signing");
       setFiles((current) => current.map((item) => ({ ...item, status: "uploading" })));
-      uploadBlobs.mutate({
+      await uploadBlobs.mutateAsync({
         signer: {
           account: account.address,
           signAndSubmitTransaction: async (transaction) => {
-            const response = await signAndSubmitTransaction(transaction);
-            setStage("confirming");
-            return response;
+            setStage("signing");
+            try {
+              const response = await signAndSubmitTransaction(transaction);
+              setStage("confirming");
+              return response;
+            } catch (reason) {
+              const walletError =
+                reason instanceof Error
+                  ? reason
+                  : new Error("Wallet signature was rejected.");
+              setTechnicalError(walletError.message);
+              throw walletError;
+            }
           },
         },
         blobs,
