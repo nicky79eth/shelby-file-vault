@@ -1,6 +1,6 @@
 "use client";
 
-// Force a fresh Vercel build after Shelby provider integration.
+// Shelby React 4.3 uses the browser client's coordination API for blob listing.
 
 import { useEffect, useMemo, useState } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
