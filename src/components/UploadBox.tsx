@@ -208,12 +208,8 @@ export default function UploadBox({ onUploaded }: Props) {
         // The published React 4.3 types omit this field, but the upload
         // mutation accepts the same expiration option used by Shelby's SDK.
         expirationMicros,
-        options: {
-          locationHint: "shelbynet-1",
-        },
       } as Parameters<typeof uploadBlobs.mutateAsync>[0] & {
         expirationMicros: number;
-        options: { locationHint: string };
       });
     } catch (reason) {
       const uploadError =
