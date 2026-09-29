@@ -73,8 +73,9 @@ export default function UploadBox({ onUploaded }: Props) {
       if (inputRef.current) inputRef.current.value = "";
     },
     onError: (reason) => {
-      setError(friendlyUploadError(reason));
-      setTechnicalError(reason.message);
+      const uploadError = reason instanceof Error ? reason : new Error("Upload failed.");
+      setError(friendlyUploadError(uploadError));
+      setTechnicalError(uploadError.message);
       setFiles((current) => current.map((item) => ({ ...item, status: "pending" })));
       setStage("idle");
     },
