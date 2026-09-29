@@ -9,6 +9,7 @@ import {
   SHELBY_NETWORK,
   SHELBY_NETWORK_NAME,
 } from "@/lib/shelby-network";
+import { shelbyBrowserClient } from "@/lib/shelby-browser";
 
 export default function AppProviders({ children }: PropsWithChildren) {
   const [queryClient] = useState(() => new QueryClient());
@@ -17,23 +18,24 @@ export default function AppProviders({ children }: PropsWithChildren) {
     <QueryClientProvider client={queryClient}>
       <ShelbyClientProvider client={shelbyBrowserClient}>
         <AptosWalletAdapterProvider
-        autoConnect
-        optInWallets={[
-          "Petra",
-          "Nightly",
-          "Pontem Wallet",
-          "Backpack",
-          "OKX Wallet",
-        ]}
-        dappConfig={{
-          network: SHELBY_NETWORK,
-          aptosApiKeys: {
-            [SHELBY_NETWORK_NAME]: SHELBY_API_KEY,
-          },
-        }}
-      >
-        {children}
-      </AptosWalletAdapterProvider>
+          autoConnect
+          optInWallets={[
+            "Petra",
+            "Nightly",
+            "Pontem Wallet",
+            "Backpack",
+            "OKX Wallet",
+          ]}
+          dappConfig={{
+            network: SHELBY_NETWORK,
+            aptosApiKeys: {
+              [SHELBY_NETWORK_NAME]: SHELBY_API_KEY,
+            },
+          }}
+        >
+          {children}
+        </AptosWalletAdapterProvider>
+      </ShelbyClientProvider>
     </QueryClientProvider>
   );
 }
