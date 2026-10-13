@@ -168,7 +168,7 @@ export default function UploadBox({ onUploaded }: Props) {
       const timestamp = Date.now();
       const uploadItems = files.map((item, index) => ({
         ...item,
-        blobName: `vault/${timestamp}-${index}-${safeName(item.name.trim())}`,
+        blobName: `dApp0xNickyy/${timestamp}-${index}-${safeName(item.name.trim())}`,
       }));
       const expirationMicros = (Date.now() + expirationDays * DAY_MS) * 1000;
 
