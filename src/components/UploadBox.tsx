@@ -191,6 +191,36 @@ export default function UploadBox({ onUploaded }: Props) {
           signAndSubmitTransaction: async (transaction) => {
             setStage("signing");
             try {
+              // Log only transaction-payload metadata to help diagnose Petra's
+              // blank confirmation window. Do not log argument contents or secrets.
+              const txData = (
+                transaction as {
+                  data?: {
+                    function?: unknown;
+                    functionArguments?: unknown[];
+                  };
+                }
+              ).data;
+              console.log("[Petra] Transaction payload diagnostics", {
+                function: txData?.function,
+                arguments: txData?.functionArguments?.map((arg, index) => ({
+                  index,
+                  type: arg instanceof Uint8Array ? "Uint8Array" : typeof arg,
+                  length:
+                    arg instanceof Uint8Array
+                      ? arg.length
+                      : typeof arg === "string"
+                        ? arg.length
+                        : undefined,
+                  empty:
+                    arg instanceof Uint8Array
+                      ? arg.length === 0
+                      : typeof arg === "string"
+                        ? arg.length === 0
+                        : undefined,
+                })),
+              });
+
               const response = await signAndSubmitTransaction(transaction);
               setStage("confirming");
               return response;
