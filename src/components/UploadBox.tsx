@@ -201,27 +201,61 @@ export default function UploadBox({ onUploaded }: Props) {
                   };
                 }
               ).data;
+              const describeValue = (value: unknown, depth = 0): unknown => {
+                if (value === null) return { type: "null" };
+                if (value === undefined) return { type: "undefined" };
+                if (value instanceof Uint8Array) {
+                  return { type: "Uint8Array", length: value.length, empty: value.length === 0 };
+                }
+                if (Array.isArray(value)) {
+                  return {
+                    type: "array",
+                    length: value.length,
+                    items:
+                      depth < 3
+                        ? value.map((item) => describeValue(item, depth + 1))
+                        : "[nested details omitted]",
+                  };
+                }
+                if (typeof value === "string") {
+                  return { type: "string", length: value.length, empty: value.length === 0 };
+                }
+                if (typeof value === "object") {
+                  const objectValue = value as Record<string, unknown>;
+                  const keys = Object.keys(objectValue);
+                  return {
+                    type: value.constructor?.name ?? "object",
+                    keys,
+                    fields:
+                      depth < 3
+                        ? Object.fromEntries(
+                            keys.map((key) => [key, describeValue(objectValue[key], depth + 1)]),
+                          )
+                        : "[nested details omitted]",
+                  };
+                }
+                return { type: typeof value };
+              };
+
               const argumentDiagnostics = txData?.functionArguments?.map((arg, index) => ({
                 index,
-                type: arg instanceof Uint8Array ? "Uint8Array" : typeof arg,
+                type: arg instanceof Uint8Array ? "Uint8Array" : Array.isArray(arg) ? "array" : arg === null ? "null" : typeof arg,
                 length:
                   arg instanceof Uint8Array
                     ? arg.length
-                    : typeof arg === "string"
+                    : Array.isArray(arg)
                       ? arg.length
-                      : undefined,
+                      : typeof arg === "string"
+                        ? arg.length
+                        : undefined,
                 empty:
-                  arg instanceof Uint8Array
+                  arg instanceof Uint8Array || Array.isArray(arg)
                     ? arg.length === 0
                     : typeof arg === "string"
                       ? arg.length === 0
                       : arg == null,
-                valuePreview:
-                  typeof arg === "string"
-                    ? arg.slice(0, 100)
-                    : arg == null
-                      ? String(arg)
-                      : undefined,
+                // Structural metadata only: never log string contents, byte values, or signatures.
+                structure: describeValue(arg),
               }));
               console.group("[Petra] Transaction payload diagnostics");
               console.log("Function:", txData?.function);
