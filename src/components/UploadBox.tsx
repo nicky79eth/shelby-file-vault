@@ -265,7 +265,31 @@ export default function UploadBox({ onUploaded }: Props) {
               console.log("Safe payload structure (copyable):\n" + JSON.stringify(argumentDiagnostics ?? [], null, 2));
               console.groupEnd();
 
-              const response = await signAndSubmitTransaction(transaction);
+              // Petra 2.7.4 can fail while rendering an empty byte vector in the
+              // commit_object_v2 confirmation prompt. Represent the same empty Move
+              // vector<u8> as an empty array for wallet serialization; do not add bytes.
+              let walletTransaction = transaction;
+              const walletTxData = transaction as unknown as {
+                data?: { function?: string; functionArguments?: unknown[] };
+              };
+              if (
+                walletTxData.data?.function?.endsWith("::blob_metadata::commit_object_v2") &&
+                walletTxData.data.functionArguments?.[3] instanceof Uint8Array &&
+                walletTxData.data.functionArguments[3].length === 0
+              ) {
+                walletTransaction = {
+                  ...(transaction as object),
+                  data: {
+                    ...walletTxData.data,
+                    functionArguments: walletTxData.data.functionArguments.map((arg, index) =>
+                      index === 3 ? [] : arg,
+                    ),
+                  },
+                } as typeof transaction;
+                console.info("[Petra] Using empty-array representation for empty passthroughMeta vector.");
+              }
+
+              const response = await signAndSubmitTransaction(walletTransaction);
               setStage("confirming");
               return response;
             } catch (reason) {
