@@ -260,6 +260,9 @@ export default function UploadBox({ onUploaded }: Props) {
               console.group("[Petra] Transaction payload diagnostics");
               console.log("Function:", txData?.function);
               console.table(argumentDiagnostics ?? []);
+              // Expanded JSON is easier to inspect than collapsed DevTools objects.
+              // The diagnostics contain types, lengths, and object keys only—not raw values.
+              console.log("Safe payload structure (copyable):\n" + JSON.stringify(argumentDiagnostics ?? [], null, 2));
               console.groupEnd();
 
               const response = await signAndSubmitTransaction(transaction);
