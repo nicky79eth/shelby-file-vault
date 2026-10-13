@@ -201,25 +201,32 @@ export default function UploadBox({ onUploaded }: Props) {
                   };
                 }
               ).data;
-              console.log("[Petra] Transaction payload diagnostics", {
-                function: txData?.function,
-                arguments: txData?.functionArguments?.map((arg, index) => ({
-                  index,
-                  type: arg instanceof Uint8Array ? "Uint8Array" : typeof arg,
-                  length:
-                    arg instanceof Uint8Array
+              const argumentDiagnostics = txData?.functionArguments?.map((arg, index) => ({
+                index,
+                type: arg instanceof Uint8Array ? "Uint8Array" : typeof arg,
+                length:
+                  arg instanceof Uint8Array
+                    ? arg.length
+                    : typeof arg === "string"
                       ? arg.length
-                      : typeof arg === "string"
-                        ? arg.length
-                        : undefined,
-                  empty:
-                    arg instanceof Uint8Array
+                      : undefined,
+                empty:
+                  arg instanceof Uint8Array
+                    ? arg.length === 0
+                    : typeof arg === "string"
                       ? arg.length === 0
-                      : typeof arg === "string"
-                        ? arg.length === 0
-                        : undefined,
-                })),
-              });
+                      : arg == null,
+                valuePreview:
+                  typeof arg === "string"
+                    ? arg.slice(0, 100)
+                    : arg == null
+                      ? String(arg)
+                      : undefined,
+              }));
+              console.group("[Petra] Transaction payload diagnostics");
+              console.log("Function:", txData?.function);
+              console.table(argumentDiagnostics ?? []);
+              console.groupEnd();
 
               const response = await signAndSubmitTransaction(transaction);
               setStage("confirming");
