@@ -205,11 +205,6 @@ export default function UploadBox({ onUploaded }: Props) {
           },
         },
         blobs,
-        // The published React 4.3 types omit this field, but the upload
-        // mutation accepts the same expiration option used by Shelby's SDK.
-        expirationMicros,
-      } as Parameters<typeof uploadBlobs.mutateAsync>[0] & {
-        expirationMicros: number;
       });
     } catch (reason) {
       const uploadError =
@@ -327,7 +322,7 @@ export default function UploadBox({ onUploaded }: Props) {
                 <button key={days} type="button" className={expirationDays === days ? "selected" : ""} onClick={() => setExpirationDays(days)} aria-pressed={expirationDays === days}>{days}d</button>
               ))}
             </div>
-            <p>Stored for {expirationDays} days after upload.</p>
+            <p>This is an app-side preference only; ShelbyNet does not enforce automatic expiry through this upload API.</p>
           </fieldset>
         </>
       ) : null}
