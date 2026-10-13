@@ -1,7 +1,6 @@
 "use client";
 
-// Shelby React 4.3 uses the browser client's coordination API for blob listing.
-// Blob listing uses the SDK coordination API; do not import the removed useAccountBlobs hook.
+// Shelby SDK 0.10 lists committed objects through the index client.
 
 import { useEffect, useMemo, useState } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
@@ -18,7 +17,9 @@ export default function Home() {
   const { account, connected } = useWallet();
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [ready, setReady] = useState(false);
-  const [remoteBlobs, setRemoteBlobs] = useState<ShelbyBlobMetadata[]>([]);
+  const [remoteBlobs, setRemoteBlobs] = useState<Awaited<
+    ReturnType<typeof shelbyBrowserClient.index.listObjectsByPrefix>
+  >>([]);
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncError, setSyncError] = useState<string | undefined>();
   const walletAddress = account?.address.toString();
@@ -38,7 +39,11 @@ export default function Home() {
       setSyncError(undefined);
 
       try {
-        const blobs = await getAccountBlobs(walletAddress);
+        const blobs = await shelbyBrowserClient.index.listObjectsByPrefix({
+          owner: walletAddress,
+          prefix: "vault/",
+          limit: 100,
+        });
         if (!cancelled) setRemoteBlobs(blobs);
       } catch (error) {
         if (!cancelled) {
@@ -70,7 +75,7 @@ export default function Home() {
       connected && walletAddress ? remoteBlobs : [];
     const remoteFiles: StoredFile[] = visibleRemoteBlobs.map((blob) => {
         const ownerAddress = walletAddress ?? "";
-        const blobName = blob.blobNameSuffix;
+        const blobName = blob.key;
         const local = localByBlob.get(
           `${ownerAddress.toLowerCase()}:${blobName}`,
         );
@@ -78,13 +83,14 @@ export default function Home() {
 
         return {
           id: local?.id ?? `shelby:${ownerAddress}:${blobName}`,
-          name: local?.name ?? basename.replace(/^\d+-/, ""),
-          size: blob.size,
+          name: local?.name ?? basename.replace(/^\d+-\d+-/, ""),
+          size: blob.plaintextSize,
           type: local?.type ?? inferMimeType(basename),
           uploadedAt:
             local?.uploadedAt ??
-            new Date(blob.creationMicros / 1000).toISOString(),
-          expiresAt: new Date(blob.expirationMicros / 1000).toISOString(),
+            new Date(blob.committedAtMicros / 1000).toISOString(),
+          // Expiration is currently an app-side preference, not an on-chain field.
+          expiresAt: local?.expiresAt,
           blobName,
           ownerAddress,
           provider: "shelby",
@@ -205,24 +211,6 @@ export default function Home() {
       </footer>
     </main>
   );
-}
-
-type ShelbyBlobMetadata = {
-  name?: string;
-  blobNameSuffix: string;
-  size: number;
-  creationMicros: number;
-  expirationMicros: number;
-};
-
-async function getAccountBlobs(account: string): Promise<ShelbyBlobMetadata[]> {
-  // SDK 0.9.1 exposes the coordination client without the method in its
-  // published TypeScript type, while the runtime API provides getAccountBlobs.
-  const coordination = shelbyBrowserClient.coordination as unknown as {
-    getAccountBlobs: (input: { account: string }) => Promise<ShelbyBlobMetadata[]>;
-  };
-
-  return coordination.getAccountBlobs({ account });
 }
 
 function inferMimeType(name: string): string {
