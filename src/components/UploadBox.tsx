@@ -453,7 +453,17 @@ function friendlyUploadError(error: Error): string {
   const message = error.message.toLowerCase();
   if (message.includes("reject") || message.includes("cancel")) return "The wallet request was cancelled. Try again when you are ready to sign.";
   if (message.includes("insufficient") || message.includes("balance")) return "Your wallet may not have enough ShelbyNet funds for gas or storage.";
-  if (message.includes("unauthorized") || message.includes("api key") || message.includes("401")) return "Shelby could not authorize this app. Check the Client API key and allowed website URL.";
+  // The SDK may surface a plain-text "Unauthorized" body as a JSON parse error
+  // such as: Unexpected token 'U', "Unauthoriz"... is not valid JSON
+  if (message.includes("unauthoriz") || message.includes("api key") || message.includes("401")) {
+    return (
+      "Shelby rejected the API key (401 Unauthorized). Check that NEXT_PUBLIC_SHELBYNET_API_KEY is a Client key " +
+      "created for Shelbynet, that this site's URL is in the key's allowed URLs, and that you redeployed after changing it."
+    );
+  }
+  if (message.includes("is not valid json")) {
+    return "Shelby returned a response the app could not read (not JSON). This usually means an error such as a rejected API key (401). Open DevTools > Network and check the failing request's status and response.";
+  }
   if (message.includes("failed to fetch") || message.includes("load failed") || message.includes("networkerror")) {
     const walletNote = message.includes("chunkset")
       ? " Your wallet may already have signed the registration transaction, so check your wallet activity before retrying."
