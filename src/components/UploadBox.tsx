@@ -454,6 +454,17 @@ function friendlyUploadError(error: Error): string {
   if (message.includes("reject") || message.includes("cancel")) return "The wallet request was cancelled. Try again when you are ready to sign.";
   if (message.includes("insufficient") || message.includes("balance")) return "Your wallet may not have enough ShelbyNet funds for gas or storage.";
   if (message.includes("unauthorized") || message.includes("api key") || message.includes("401")) return "Shelby could not authorize this app. Check the Client API key and allowed website URL.";
+  if (message.includes("failed to fetch") || message.includes("load failed") || message.includes("networkerror")) {
+    const walletNote = message.includes("chunkset")
+      ? " Your wallet may already have signed the registration transaction, so check your wallet activity before retrying."
+      : "";
+    return (
+      "The browser could not reach the Shelby RPC. Common causes: an ad blocker, VPN or DNS block on shelby.xyz; " +
+      "a Client API key whose allowed website URLs do not include this site (CORS); or the Shelby endpoint being down. " +
+      "Open DevTools > Network and check the failed request for details." +
+      walletNote
+    );
+  }
   if (message.includes("network") || message.includes("fetch")) return "The Shelby network could not be reached. Check your connection and try again.";
   if (message.includes("10 mb") || message.includes("connect your")) return error.message;
   return "Check your wallet, ShelbyNet balance, and Shelby configuration, then try again.";
